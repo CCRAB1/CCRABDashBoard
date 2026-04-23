@@ -1,0 +1,14 @@
+.git
+.gitignore
+.venv
+.idea
+__pycache__/
+*.py[cod]
+*.swp
+.DS_Store
+.env
+prod.env
+media/
+staticfiles/
+node_modules/
+vue/ccrab_frontend/node_modules/

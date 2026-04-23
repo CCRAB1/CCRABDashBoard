@@ -1,0 +1,13 @@
+Django>=5.0,<6
+django-environ
+django-filter
+djangorestframework
+djangorestframework-simplejwt
+djangorestframework-gis
+psycopg2-binary
+gunicorn==20.1.0
+python-dateutil
+
+
+
+
