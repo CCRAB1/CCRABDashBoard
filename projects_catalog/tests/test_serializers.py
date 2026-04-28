@@ -21,7 +21,7 @@ class CatalogSerializerTests(TestCase):
         self.product_type_air = create_product_type("Air Quality")
         self.product_type_data = create_product_type("Data Products")
 
-    def test_hosting_location_serializer_exposes_alias_fields(self):
+    def test_hosting_location_serializer_exposes_database_field_names(self):
         location = create_hosting_location(
             self.project,
             data_type="Dataset",
@@ -34,18 +34,18 @@ class CatalogSerializerTests(TestCase):
         payload = serializer.data
 
         self.assertEqual(payload["project_id"], self.project.id)
-        self.assertEqual(payload["data_summary_file"], "Summary file text")
+        self.assertEqual(payload["data_summary"], "Summary file text")
         self.assertEqual(payload["product_category_id"], self.category.id)
         self.assertEqual(payload["product_type_id"], [self.product_type_air.id])
         self.assertEqual(len(payload["product_types"]), 1)
         self.assertEqual(payload["product_types"][0]["name"], "Air Quality")
 
-    def test_hosting_location_serializer_accepts_data_summary_file_and_types(self):
+    def test_hosting_location_serializer_accepts_database_field_names(self):
         serializer = HostingLocationSerializer(
             data={
                 "project_id": self.project.id,
                 "data_type": "Dashboard",
-                "data_summary_file": "Dashboard summary",
+                "data_summary": "Dashboard summary",
                 "url": "https://example.com/dashboard",
                 "product_category_id": self.category.id,
                 "product_type_id": [

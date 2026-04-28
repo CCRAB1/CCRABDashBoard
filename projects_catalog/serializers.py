@@ -44,7 +44,14 @@ class ProjectPictureSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProjectPicture
-        fields = ("id", "project_id", "name", "picture_path", "created_at", "updated_at")
+        fields = (
+            "id",
+            "project_id",
+            "name",
+            "picture_path",
+            "created_at",
+            "updated_at",
+        )
         read_only_fields = ("created_at", "updated_at")
 
 
@@ -74,11 +81,6 @@ class HostingLocationSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    data_summary_file = serializers.CharField(
-        source="data_summary",
-        required=False,
-        allow_null=True,
-    )
     product_types = ProductTypeSerializer(many=True, read_only=True)
     product_type_id = serializers.PrimaryKeyRelatedField(
         source="product_types",
@@ -94,7 +96,7 @@ class HostingLocationSerializer(serializers.ModelSerializer):
             "project_id",
             "slug",
             "data_type",
-            "data_summary_file",
+            "data_summary",
             "url",
             "product_category_id",
             "product_types",

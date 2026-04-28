@@ -77,11 +77,11 @@ class ProjectListAndFacetsApiTests(TestCase):
         self.access_token = str(refresh.access_token)
         self.client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {self.access_token}"
 
-    def _result_codes(self, payload):
-        codes = []
+    def _result_slugs(self, payload):
+        slugs = []
         for row in payload.get("results", []):
-            codes.append(row.get("code"))
-        return codes
+            slugs.append(row.get("slug"))
+        return slugs
 
     def test_project_list_requires_authentication(self):
         self.client.defaults.pop("HTTP_AUTHORIZATION", None)
@@ -105,25 +105,30 @@ class ProjectListAndFacetsApiTests(TestCase):
         self.assertEqual(payload["displaying"]["start"], 1)
         self.assertEqual(payload["displaying"]["end"], 3)
 
-    def test_project_list_result_uses_slug_code_detail_url_and_featured_image(self):
+    def test_project_list_result_uses_database_field_names_and_project_url(self):
         response = self.client.get(reverse("project-list-api"))
 
         payload = response.json()
         first_row = payload["results"][0]
-        self.assertEqual(first_row["code"], self.project_one.slug)
+        self.assertEqual(first_row["slug"], self.project_one.slug)
+        self.assertEqual(first_row["project_name"], self.project_one.project_name)
+        self.assertEqual(
+            first_row["project_full_title"],
+            self.project_one.project_full_title,
+        )
         self.assertIn(
             f"/projects_catalog/{self.project_one.slug}/",
-            first_row["detail_url"],
+            first_row["project_detail_url"],
         )
-        self.assertIsNotNone(first_row["featured_image"])
-        self.assertIn("url", first_row["featured_image"])
+        self.assertEqual(len(first_row["pictures"]), 1)
+        self.assertIn("picture_path", first_row["pictures"][0])
 
     def test_project_list_filters_by_query(self):
         response = self.client.get(reverse("project-list-api"), {"q": "wetlands"})
 
         payload = response.json()
-        codes = self._result_codes(payload)
-        self.assertEqual(codes, [self.project_two.slug])
+        slugs = self._result_slugs(payload)
+        self.assertEqual(slugs, [self.project_two.slug])
 
     def test_project_list_keywords_filter_takes_precedence_over_query(self):
         response = self.client.get(
@@ -132,8 +137,8 @@ class ProjectListAndFacetsApiTests(TestCase):
         )
 
         payload = response.json()
-        codes = self._result_codes(payload)
-        self.assertEqual(codes, [self.project_one.slug])
+        slugs = self._result_slugs(payload)
+        self.assertEqual(slugs, [self.project_one.slug])
 
     def test_project_list_filters_by_project_type_case_insensitive(self):
         response = self.client.get(
@@ -142,8 +147,8 @@ class ProjectListAndFacetsApiTests(TestCase):
         )
 
         payload = response.json()
-        codes = self._result_codes(payload)
-        self.assertEqual(codes, [self.project_one.slug])
+        slugs = self._result_slugs(payload)
+        self.assertEqual(slugs, [self.project_one.slug])
 
     def test_project_list_distinct_avoids_duplicate_rows_from_joins(self):
         response = self.client.get(
@@ -162,8 +167,8 @@ class ProjectListAndFacetsApiTests(TestCase):
         )
 
         payload = response.json()
-        codes = self._result_codes(payload)
-        self.assertEqual(codes, [self.project_two.slug])
+        slugs = self._result_slugs(payload)
+        self.assertEqual(slugs, [self.project_two.slug])
 
     def test_project_list_filters_by_region(self):
         response = self.client.get(
@@ -172,8 +177,8 @@ class ProjectListAndFacetsApiTests(TestCase):
         )
 
         payload = response.json()
-        codes = self._result_codes(payload)
-        self.assertEqual(codes, [self.project_one.slug])
+        slugs = self._result_slugs(payload)
+        self.assertEqual(slugs, [self.project_one.slug])
 
     def test_project_list_paginates_results(self):
         next_index = 1

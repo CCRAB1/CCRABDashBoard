@@ -115,8 +115,11 @@ class ProjectDetailAndProductsApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["code"], self.project_two.slug)
-        self.assertEqual(payload["title"], self.project_two.project_full_title)
+        self.assertEqual(payload["slug"], self.project_two.slug)
+        self.assertEqual(
+            payload["project_full_title"],
+            self.project_two.project_full_title,
+        )
 
     def test_project_detail_api_resolves_project_by_numeric_id(self):
         response = self.client.get(
@@ -125,7 +128,7 @@ class ProjectDetailAndProductsApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["code"], self.project_two.slug)
+        self.assertEqual(payload["slug"], self.project_two.slug)
 
     def test_project_detail_api_resolves_project_by_slugified_name_fallback(self):
         response = self.client.get(
@@ -134,9 +137,9 @@ class ProjectDetailAndProductsApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["code"], self.fallback_project.slug)
+        self.assertEqual(payload["slug"], self.fallback_project.slug)
         self.assertEqual(
-            payload["title"],
+            payload["project_full_title"],
             self.fallback_project.project_full_title,
         )
 
@@ -153,29 +156,35 @@ class ProjectDetailAndProductsApiTests(TestCase):
         )
 
         payload = response.json()
-        self.assertIn("team", payload)
-        self.assertIn("taxonomy", payload)
-        self.assertIn("gallery", payload)
-        self.assertIn("nav", payload)
-        self.assertEqual(payload["summary"], "Project two first paragraph.")
+        self.assertIn("partners", payload)
+        self.assertIn("pictures", payload)
+        self.assertIn("hosting_locations", payload)
+        self.assertIn("previous_project", payload)
+        self.assertIn("next_project", payload)
+        self.assertNotIn("team", payload)
+        self.assertNotIn("taxonomy", payload)
+        self.assertNotIn("gallery", payload)
+        self.assertNotIn("nav", payload)
         self.assertEqual(
-            payload["impact_bullets"],
-            ["Improve quality", "Expand coverage"],
+            payload["project_description"],
+            self.project_two.project_description,
         )
-        self.assertEqual(len(payload["gallery"]), 2)
+        self.assertEqual(payload["project_impact"], self.project_two.project_impact)
+        self.assertEqual(payload["project_lead"], self.project_two.project_lead)
+        self.assertEqual(len(payload["pictures"]), 2)
+        self.assertEqual(len(payload["partners"]), 2)
 
-        team = payload["team"]
+        product_type_names = []
+        for location in payload["hosting_locations"]:
+            self.assertIn("data_summary", location)
+            self.assertNotIn("data_summary_file", location)
+            for product_type in location.get("product_types", []):
+                name = product_type.get("name")
+                if name and name not in product_type_names:
+                    product_type_names.append(name)
+        product_type_names.sort()
         self.assertEqual(
-            team["project_leads"][0]["name"],
-            self.project_two.project_lead,
-        )
-        self.assertEqual(len(team["collaborative_leads"]), 2)
-        self.assertEqual(team["partners"], "Partner One, Partner Two")
-
-        taxonomy = payload["taxonomy"]
-        self.assertEqual(taxonomy["project_type"], "Air Quality")
-        self.assertEqual(
-            taxonomy["focus_areas"],
+            product_type_names,
             ["Air Quality", "Data Products", "Water Quality"],
         )
 
@@ -185,18 +194,25 @@ class ProjectDetailAndProductsApiTests(TestCase):
         )
 
         payload = response.json()
-        nav = payload["nav"]
-        self.assertIsNotNone(nav["previous"])
-        self.assertIsNotNone(nav["next"])
-        self.assertEqual(nav["previous"]["title"], self.project_one.project_full_title)
+        previous_project = payload["previous_project"]
+        next_project = payload["next_project"]
+        self.assertIsNotNone(previous_project)
+        self.assertIsNotNone(next_project)
+        self.assertEqual(
+            previous_project["project_full_title"],
+            self.project_one.project_full_title,
+        )
         self.assertIn(
             f"/projects_catalog/{self.project_one.slug}/",
-            nav["previous"]["url"],
+            previous_project["project_detail_url"],
         )
-        self.assertEqual(nav["next"]["title"], self.project_three.project_full_title)
+        self.assertEqual(
+            next_project["project_full_title"],
+            self.project_three.project_full_title,
+        )
         self.assertIn(
             f"/projects_catalog/{self.project_three.slug}/",
-            nav["next"]["url"],
+            next_project["project_detail_url"],
         )
 
     def test_project_products_api_groups_locations_by_category(self):
@@ -206,7 +222,7 @@ class ProjectDetailAndProductsApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["code"], self.project_two.slug)
+        self.assertEqual(payload["slug"], self.project_two.slug)
 
         categories = payload["categories"]
         self.assertIn("Reports", categories)
@@ -228,4 +244,10 @@ class ProjectDetailAndProductsApiTests(TestCase):
             f"/projects_catalog/{self.project_two.slug}/resource/"
             f"{self.project_two_report_location.slug}/"
         )
-        self.assertIn(expected_path, first_item["detail_url"])
+        self.assertEqual(first_item["project_id"], self.project_two.id)
+        self.assertEqual(first_item["product_category_id"], self.category_reports.id)
+        self.assertEqual(
+            sorted(first_item["product_type_id"]),
+            sorted([self.type_water.id, self.type_air.id]),
+        )
+        self.assertIn(expected_path, first_item["resource_detail_url"])

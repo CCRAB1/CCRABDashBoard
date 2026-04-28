@@ -13,12 +13,15 @@ from rest_framework.response import Response
 from .models import ProductType, ProjectCatalogPage
 from .serializers import ProjectCatalogPageSerializer
 
-
 PAGE_SIZE = 12
 
 
 def _project_title(project_dict):
-    return project_dict.get("project_full_title") or project_dict.get("project_name") or "Untitled project"
+    return (
+        project_dict.get("project_full_title")
+        or project_dict.get("project_name")
+        or "Untitled project"
+    )
 
 
 def _project_title_from_model(project):
@@ -152,7 +155,10 @@ def _resolve_project(code):
         return simple_match
 
     for project in queryset:
-        if slugify(project.project_name) == code or slugify(project.project_full_title or "") == code:
+        if (
+            slugify(project.project_name) == code
+            or slugify(project.project_full_title or "") == code
+        ):
             return project
 
     raise Http404("Project not found")
@@ -179,7 +185,9 @@ def _project_list_payload(query_params):
         )
 
     if project_type:
-        queryset = queryset.filter(hosting_locations__product_types__name__iexact=project_type)
+        queryset = queryset.filter(
+            hosting_locations__product_types__name__iexact=project_type
+        )
 
     if neighborhood:
         queryset = queryset.filter(neighborhood__icontains=neighborhood)
@@ -208,11 +216,17 @@ def _project_list_payload(query_params):
         model_obj = project_lookup[project_id]
         results.append(
             {
-                "code": _project_code_for_url(model_obj),
-                "title": _project_title(project),
-                "duration": _format_duration(model_obj.start_date, model_obj.end_date),
-                "detail_url": reverse("project-detail", kwargs={"code": _project_code_for_url(model_obj)}),
-                "featured_image": _first_featured_image(project),
+                "id": project_id,
+                "slug": _project_code_for_url(model_obj),
+                "project_name": project.get("project_name"),
+                "project_full_title": project.get("project_full_title"),
+                "start_date": project.get("start_date"),
+                "end_date": project.get("end_date"),
+                "pictures": project.get("pictures") or [],
+                "project_detail_url": reverse(
+                    "project-detail",
+                    kwargs={"code": _project_code_for_url(model_obj)},
+                ),
             }
         )
 
@@ -234,7 +248,11 @@ def _project_list_payload(query_params):
 
 def _project_facets_payload():
     project_types = []
-    for project_type_name in ProductType.objects.order_by("name").values_list("name", flat=True):
+    product_type_values = ProductType.objects.order_by("name").values_list(
+        "name",
+        flat=True,
+    )
+    for project_type_name in product_type_values:
         project_types.append(project_type_name)
 
     neighborhoods = []
@@ -261,108 +279,34 @@ def _project_detail_payload(code):
     project = _resolve_project(code)
     project_data = ProjectCatalogPageSerializer(project).data
 
-    prev_project = ProjectCatalogPage.objects.filter(pk__lt=project.pk).order_by("-pk").first()
-    next_project = ProjectCatalogPage.objects.filter(pk__gt=project.pk).order_by("pk").first()
+    prev_project = (
+        ProjectCatalogPage.objects.filter(pk__lt=project.pk).order_by("-pk").first()
+    )
+    next_project = (
+        ProjectCatalogPage.objects.filter(pk__gt=project.pk).order_by("pk").first()
+    )
 
-    gallery = []
-    for picture in project_data.get("pictures") or []:
-        if picture.get("picture_path"):
-            gallery.append(
-                {
-                    "url": picture["picture_path"],
-                    "caption": picture.get("name") or "",
-                    "alt": picture.get("name") or _project_title(project_data),
-                }
-            )
-    product_type_names = []
-    for location in project_data.get("hosting_locations") or []:
-        for product_type in location.get("product_types") or []:
-            name = product_type.get("name")
-            if name and name not in product_type_names:
-                product_type_names.append(name)
-    product_type_names.sort()
-
-    partner_names = []
-    for partner in project_data.get("partners") or []:
-        partner_name = partner.get("name")
-        if partner_name and partner_name not in partner_names:
-            partner_names.append(partner_name)
-
-    collaborative_leads = []
-    for partner in project_data.get("partners") or []:
-        name = partner.get("name")
-        organization = partner.get("affiliation")
-
-        if name or organization:
-            collaborative_leads.append(
-                {
-                    "name": name,
-                    "organization": organization,
-                }
-            )
-
-    project_leads = []
-    if project_data.get("project_lead"):
-        project_leads.append(
-            {
-                "name": project_data.get("project_lead"),
-                "organization": None,
-                "email": project_data.get("project_lead_email"),
-            }
-        )
-
-    neighborhood_values = []
-    if project_data.get("neighborhood"):
-        neighborhood_values.append(project_data["neighborhood"])
-    reserve_values = []
-    for neighborhood_value in neighborhood_values:
-        reserve_values.append(neighborhood_value)
-
-    payload = {
-        "code": _project_code_for_url(project),
-        "title": _project_title(project_data),
-        "neighborhood": project_data.get("neighborhood"),
-        "lead_reserve": project_data.get("neighborhood"),
-        "duration": _format_duration(project.start_date, project.end_date),
-        "grant_amount": None,
-        "summary": (_split_paragraphs(project_data.get("project_description")) or [""])[0],
-        "source_url": project_data.get("project_url"),
-        "featured_image": _first_featured_image(project_data),
-        "project_paragraphs": _split_paragraphs(project_data.get("project_description")),
-        "impact_bullets": _split_bullets(project_data.get("project_impact")),
-        "gallery": gallery,
-        "team": {
-            "project_leads": project_leads,
-            "collaborative_leads": collaborative_leads,
-            "partners": ", ".join(partner_names),
-        },
-        "taxonomy": {
-            "project_type": product_type_names[0] if product_type_names else None,
-            "focus_areas": product_type_names,
-            "keywords": project_data.get("keywords") or [],
-            "neighborhoods": neighborhood_values,
-            "reserves": reserve_values,
-        },
-        "nav": {
-            "previous": (
-                {
-                    "title": prev_project.project_full_title or prev_project.project_name,
-                    "url": reverse("project-detail", kwargs={"code": _project_code_for_url(prev_project)}),
-                }
-                if prev_project
-                else None
-            ),
-            "next": (
-                {
-                    "title": next_project.project_full_title or next_project.project_name,
-                    "url": reverse("project-detail", kwargs={"code": _project_code_for_url(next_project)}),
-                }
-                if next_project
-                else None
-            ),
-        },
-    }
+    payload = dict(project_data)
+    payload["slug"] = _project_code_for_url(project)
+    payload["previous_project"] = _project_nav_payload(prev_project)
+    payload["next_project"] = _project_nav_payload(next_project)
     return payload
+
+
+def _project_nav_payload(project):
+    if project is None:
+        return None
+
+    return {
+        "id": project.id,
+        "slug": _project_code_for_url(project),
+        "project_name": project.project_name,
+        "project_full_title": project.project_full_title,
+        "project_detail_url": reverse(
+            "project-detail",
+            kwargs={"code": _project_code_for_url(project)},
+        ),
+    }
 
 
 def _hosting_location_payload(location, project):
@@ -372,19 +316,19 @@ def _hosting_location_payload(location, project):
 
     payload = {
         "id": location.id,
-        "project": location.project_id,
+        "project_id": location.project_id,
         "data_type": location.data_type,
         "data_summary": location.data_summary,
         "url": location.url,
-        "detail_url": reverse(
+        "resource_detail_url": reverse(
             "project-resource-detail",
             kwargs={
                 "code": _project_code_for_url(project),
                 "resource_slug": _resource_code_for_url(location),
             },
         ),
-        "product_category": location.product_category_id,
-        "product_types": product_type_ids,
+        "product_category_id": location.product_category_id,
+        "product_type_id": product_type_ids,
         "created_at": location.created_at,
         "updated_at": location.updated_at,
     }
@@ -405,7 +349,7 @@ def _project_products_payload(code):
 
         category_map[category_name].append(location_payload)
 
-    payload = {"categories": category_map, "code": _project_code_for_url(project)}
+    payload = {"categories": category_map, "slug": _project_code_for_url(project)}
     return payload
 
 
@@ -481,13 +425,17 @@ def project_resource_detail_page(request, code, resource_slug):
     if not resource_about_paragraphs:
         fallback_bits = []
         if selected_resource.data_type:
-            fallback_bits.append(f"This resource type is {selected_resource.data_type}.")
+            fallback_bits.append(
+                f"This resource type is {selected_resource.data_type}."
+            )
         if selected_resource.url:
             fallback_bits.append("Use the external link below to access the resource.")
         if fallback_bits:
             resource_about_paragraphs = fallback_bits
         else:
-            resource_about_paragraphs = ["Resource details were not provided for this item."]
+            resource_about_paragraphs = [
+                "Resource details were not provided for this item."
+            ]
 
     neighborhoods = []
     if project.neighborhood:
@@ -496,14 +444,20 @@ def project_resource_detail_page(request, code, resource_slug):
     context = {
         "project_code": _project_code_for_url(project),
         "project_title": _project_title_from_model(project),
-        "project_detail_url": reverse("project-detail", kwargs={"code": _project_code_for_url(project)}),
+        "project_detail_url": reverse(
+            "project-detail",
+            kwargs={"code": _project_code_for_url(project)},
+        ),
         "resource_title": _resource_title(selected_resource),
         "about_project_paragraphs": _split_paragraphs(project.project_description),
         "about_resource_paragraphs": resource_about_paragraphs,
         "resource_external_url": selected_resource.url,
         "resource_category": (
             selected_resource.product_category.name
-            if selected_resource.product_category and selected_resource.product_category.name
+            if (
+                selected_resource.product_category
+                and selected_resource.product_category.name
+            )
             else "Uncategorized"
         ),
         "resource_types": resource_product_types,

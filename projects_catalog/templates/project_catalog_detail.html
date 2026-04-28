@@ -19,9 +19,9 @@
   <div class="columns is-variable is-6">
     {# Main column #}
     <div class="column is-8">
-      <h1 class="title is-2" id="project-title">Loading…</h1>
+      <h1 class="title is-2" id="project-full-title">Loading…</h1>
 
-      {# Meta strip: Neighborhood / Duration / Grant Amount #}
+      {# Meta strip: database-backed project fields #}
       <div class="columns is-multiline is-mobile my-2">
         <div class="column is-12-mobile is-4-tablet">
           <div class="meta-tile">
@@ -31,14 +31,14 @@
         </div>
         <div class="column is-12-mobile is-4-tablet">
           <div class="meta-tile">
-            <p class="heading">Project Duration</p>
-            <p class="title is-6 mb-0" id="project-duration">—</p>
+            <p class="heading">Start Date</p>
+            <p class="title is-6 mb-0" id="start-date">—</p>
           </div>
         </div>
         <div class="column is-12-mobile is-4-tablet">
           <div class="meta-tile">
-            <p class="heading">Grant Amount</p>
-            <p class="title is-6 mb-0" id="grant-amount">—</p>
+            <p class="heading">End Date</p>
+            <p class="title is-6 mb-0" id="end-date">—</p>
           </div>
         </div>
       </div>
@@ -51,19 +51,19 @@
       </div>
 
       {# Short summary / dek #}
-      <p class="subtitle is-5" id="project-summary"></p>
+      <p class="subtitle is-5" id="project-description-summary"></p>
 
       <hr>
 
       {# Sections #}
       <div class="content">
         <h2 class="title is-4 mb-2">The Project</h2>
-        <div id="project-body">
+        <div id="project-description">
           <p class="has-text-grey">Loading project description…</p>
         </div>
 
         <h2 class="title is-4 mt-6 mb-2">The Impact</h2>
-        <ul id="impact-list">
+        <ul id="project-impact">
           <li class="has-text-grey">Loading impact…</li>
         </ul>
       </div>
@@ -100,13 +100,10 @@
         </header>
         <div class="card-content content">
           <p class="mb-2"><strong>Project Lead</strong></p>
-          <ul id="project-leads"><li class="has-text-grey">Loading…</li></ul>
-
-          <p class="mt-4 mb-2"><strong>Collaborative Lead</strong></p>
-          <ul id="collab-leads"><li class="has-text-grey">Loading…</li></ul>
+          <ul id="project-lead"><li class="has-text-grey">Loading…</li></ul>
 
           <p class="mt-4 mb-2"><strong>Partners</strong></p>
-          <p id="partners" class="has-text-grey">Loading…</p>
+          <ul id="partners"><li class="has-text-grey">Loading…</li></ul>
         </div>
       </div>
 
@@ -116,16 +113,13 @@
           <p class="card-header-title">Details</p>
         </header>
         <div class="card-content content">
-          <p><strong>Project Type</strong><br><span id="project-type" class="has-text-grey">—</span></p>
+          <p><strong>Project URL</strong><br><span id="project-url" class="has-text-grey">—</span></p>
 
-          <p class="mt-4"><strong>Focus Areas</strong></p>
-          <div id="focus-areas" class="tags"></div>
+          <p class="mt-4"><strong>Product Types</strong></p>
+          <div id="product-types" class="tags"></div>
 
           <p class="mt-4"><strong>Keywords</strong></p>
           <div id="keywords" class="tags"></div>
-
-          <p class="mt-4"><strong>Neighborhoods</strong></p>
-          <p id="neighborhoods" class="has-text-grey">—</p>
         </div>
       </div>
     </div>

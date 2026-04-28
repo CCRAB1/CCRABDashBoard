@@ -62,8 +62,12 @@ class ProjectWebDataEndpointTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["code"], self.project.slug)
-        self.assertEqual(payload["title"], self.project.project_full_title)
+        self.assertEqual(payload["slug"], self.project.slug)
+        self.assertEqual(payload["project_full_title"], self.project.project_full_title)
+        self.assertEqual(
+            payload["project_description"],
+            self.project.project_description,
+        )
 
     def test_project_products_web_data_is_public(self):
         response = self.client.get(
@@ -72,7 +76,7 @@ class ProjectWebDataEndpointTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["code"], self.project.slug)
+        self.assertEqual(payload["slug"], self.project.slug)
         self.assertIn("Data", payload["categories"])
 
     def test_project_list_web_data_matches_api_payload(self):
