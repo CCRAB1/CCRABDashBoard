@@ -113,7 +113,7 @@
           <p class="card-header-title">Details</p>
         </header>
         <div class="card-content content">
-          <p><strong>Project URL</strong><br><span id="project-url" class="has-text-grey">—</span></p>
+          <p><strong>Project URL</strong><br><span id="project-url"><span class="has-text-grey">—</span></span></p>
 
           <p class="mt-4"><strong>Product Types</strong></p>
           <div id="product-types" class="tags"></div>
@@ -127,6 +127,78 @@
 
 
   {% include "_product_card_template.html" %}
+
+  <template id="the-project-paragraph-template">
+    <p data-role="the-project-paragraph"></p>
+  </template>
+
+  <template id="the-project-empty-template">
+    <p class="has-text-grey">No description available.</p>
+  </template>
+
+  <template id="impact-item-template">
+    <li data-role="impact-item"></li>
+  </template>
+
+  <template id="impact-empty-template">
+    <li class="has-text-grey">No impact statements available.</li>
+  </template>
+
+  <template id="tag-template">
+    <span class="tag is-light" data-role="tag"></span>
+  </template>
+
+  <template id="tag-empty-template">
+    <span class="tag is-light">—</span>
+  </template>
+
+  <template id="person-template">
+    <li>
+      <a data-role="person-link" hidden></a>
+      <span data-role="person-text"></span>
+    </li>
+  </template>
+
+  <template id="person-empty-template">
+    <li class="has-text-grey">—</li>
+  </template>
+
+  <template id="project-url-link-template">
+    <a data-role="project-url-link" target="_blank" rel="noopener noreferrer">Open project link</a>
+  </template>
+
+  <template id="project-url-empty-template">
+    <span class="has-text-grey">—</span>
+  </template>
+
+  <template id="gallery-card-template">
+    <div class="column is-6">
+      <div class="card gallery-card">
+        <div class="card-image">
+          <figure class="image is-4by3">
+            <img data-role="gallery-image" alt="">
+          </figure>
+        </div>
+        <div class="card-content">
+          <p class="is-size-7 has-text-grey" data-role="gallery-caption"></p>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="previous-project-link-template">
+    <a class="button is-link is-light" data-role="prev-next-link">
+      <span aria-hidden="true">←</span>
+      <span data-role="prev-next-label"></span>
+    </a>
+  </template>
+
+  <template id="next-project-link-template">
+    <a class="button is-link is-light" data-role="prev-next-link">
+      <span data-role="prev-next-label"></span>
+      <span aria-hidden="true">→</span>
+    </a>
+  </template>
 </div>
 
 <script src="{% static 'projects_catalog/js/project_products.js' %}" defer></script>

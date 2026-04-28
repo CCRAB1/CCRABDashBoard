@@ -41,6 +41,20 @@
       this.productsTemplateMissingTemplate = document.getElementById(
         "products-template-missing-template"
       );
+
+      this.theProjectParagraphTemplate = document.getElementById("the-project-paragraph-template");
+      this.theProjectEmptyTemplate = document.getElementById("the-project-empty-template");
+      this.impactItemTemplate = document.getElementById("impact-item-template");
+      this.impactEmptyTemplate = document.getElementById("impact-empty-template");
+      this.tagTemplate = document.getElementById("tag-template");
+      this.tagEmptyTemplate = document.getElementById("tag-empty-template");
+      this.personTemplate = document.getElementById("person-template");
+      this.personEmptyTemplate = document.getElementById("person-empty-template");
+      this.projectUrlLinkTemplate = document.getElementById("project-url-link-template");
+      this.projectUrlEmptyTemplate = document.getElementById("project-url-empty-template");
+      this.galleryCardTemplate = document.getElementById("gallery-card-template");
+      this.previousProjectLinkTemplate = document.getElementById("previous-project-link-template");
+      this.nextProjectLinkTemplate = document.getElementById("next-project-link-template");
     }
 
     get projectCode() {
@@ -70,6 +84,25 @@
       console.log("project_detail.js BaseRenderer.setText", { el, value });
       if (!el) return;
       el.textContent = value === null || value === undefined || value === "" ? "—" : value;
+    }
+
+    cloneTemplateElement(template) {
+      console.log("project_detail.js BaseRenderer.cloneTemplateElement", { template });
+      if (!(template instanceof HTMLTemplateElement)) {
+        return null;
+      }
+      return template.content.firstElementChild?.cloneNode(true) || null;
+    }
+
+    roleElement(root, role) {
+      console.log("project_detail.js BaseRenderer.roleElement", { root, role });
+      if (!root) {
+        return null;
+      }
+      if (root.matches?.(`[data-role='${role}']`)) {
+        return root;
+      }
+      return root.querySelector(`[data-role='${role}']`);
     }
   }
 
@@ -215,47 +248,118 @@
       return people;
     }
 
-    renderParagraphs(container, paragraphs) {
+    buildFallbackTextElement(tagName, text, className = "") {
       console.log(
-        "project_detail.js ProjectContentRenderer.renderParagraphs",
+        "project_detail.js ProjectContentRenderer.buildFallbackTextElement",
+        { tagName, text, className },
+      );
+      const el = document.createElement(tagName);
+      if (className) {
+        el.className = className;
+      }
+      el.textContent = text;
+      return el;
+    }
+
+    handleProjectDescription(project) {
+      console.log("project_detail.js ProjectContentRenderer.handleProjectDescription", { project });
+      this.setText(
+        this.dom.projectDescriptionSummary,
+        this.firstParagraph(project.project_description)
+      );
+    }
+
+    handleTheProject(project) {
+      console.log("project_detail.js ProjectContentRenderer.handleTheProject", { project });
+      const paragraphs = this.splitParagraphs(project.project_description);
+      this.renderTheProject(this.dom.projectDescription, paragraphs);
+    }
+
+    handleTheProjectParagraph(paragraphEl, text) {
+      console.log(
+        "project_detail.js ProjectContentRenderer.handleTheProjectParagraph",
+        { paragraphEl, text },
+      );
+      const target = this.roleElement(paragraphEl, "the-project-paragraph") || paragraphEl;
+      if (!target) {
+        return;
+      }
+      target.textContent = text;
+    }
+
+    renderTheProject(container, paragraphs) {
+      console.log(
+        "project_detail.js ProjectContentRenderer.renderTheProject",
         { container, paragraphs },
       );
       if (!container) return;
       this.clearChildren(container);
 
       if (!Array.isArray(paragraphs) || paragraphs.length === 0) {
-        const p = document.createElement("p");
-        p.className = "has-text-grey";
-        p.textContent = "No description available.";
-        container.appendChild(p);
+        const emptyEl = (
+          this.cloneTemplateElement(this.dom.theProjectEmptyTemplate)
+          || this.buildFallbackTextElement("p", "No description available.", "has-text-grey")
+        );
+        container.appendChild(emptyEl);
         return;
       }
 
       for (const text of paragraphs) {
-        const p = document.createElement("p");
-        p.textContent = text;
-        container.appendChild(p);
+        const paragraphEl = (
+          this.cloneTemplateElement(this.dom.theProjectParagraphTemplate)
+          || this.buildFallbackTextElement("p", "")
+        );
+        this.handleTheProjectParagraph(paragraphEl, text);
+        container.appendChild(paragraphEl);
       }
     }
 
-    renderBullets(ul, bullets) {
-      console.log("project_detail.js ProjectContentRenderer.renderBullets", { ul, bullets });
+    handleImpact(project) {
+      console.log("project_detail.js ProjectContentRenderer.handleImpact", { project });
+      const bullets = this.splitBullets(project.project_impact);
+      this.renderImpact(this.dom.projectImpact, bullets);
+    }
+
+    handleImpactItem(itemEl, text) {
+      console.log("project_detail.js ProjectContentRenderer.handleImpactItem", { itemEl, text });
+      const target = this.roleElement(itemEl, "impact-item") || itemEl;
+      if (!target) {
+        return;
+      }
+      target.textContent = text;
+    }
+
+    renderImpact(ul, bullets) {
+      console.log("project_detail.js ProjectContentRenderer.renderImpact", { ul, bullets });
       if (!ul) return;
       this.clearChildren(ul);
 
       if (!Array.isArray(bullets) || bullets.length === 0) {
-        const li = document.createElement("li");
-        li.className = "has-text-grey";
-        li.textContent = "No impact statements available.";
-        ul.appendChild(li);
+        const emptyEl = (
+          this.cloneTemplateElement(this.dom.impactEmptyTemplate)
+          || this.buildFallbackTextElement("li", "No impact statements available.", "has-text-grey")
+        );
+        ul.appendChild(emptyEl);
         return;
       }
 
       for (const bullet of bullets) {
-        const li = document.createElement("li");
-        li.textContent = bullet;
-        ul.appendChild(li);
+        const itemEl = (
+          this.cloneTemplateElement(this.dom.impactItemTemplate)
+          || this.buildFallbackTextElement("li", "")
+        );
+        this.handleImpactItem(itemEl, bullet);
+        ul.appendChild(itemEl);
       }
+    }
+
+    handleTag(tagEl, value) {
+      console.log("project_detail.js ProjectContentRenderer.handleTag", { tagEl, value });
+      const target = this.roleElement(tagEl, "tag") || tagEl;
+      if (!target) {
+        return;
+      }
+      target.textContent = value;
     }
 
     renderTags(container, items) {
@@ -264,19 +368,75 @@
       this.clearChildren(container);
 
       if (!Array.isArray(items) || items.length === 0) {
-        const span = document.createElement("span");
-        span.className = "tag is-light";
-        span.textContent = "—";
-        container.appendChild(span);
+        const emptyEl = (
+          this.cloneTemplateElement(this.dom.tagEmptyTemplate)
+          || this.buildFallbackTextElement("span", "—", "tag is-light")
+        );
+        container.appendChild(emptyEl);
         return;
       }
 
       for (const item of items) {
-        const span = document.createElement("span");
-        span.className = "tag is-light";
-        span.textContent = item;
-        container.appendChild(span);
+        const tagEl = (
+          this.cloneTemplateElement(this.dom.tagTemplate)
+          || this.buildFallbackTextElement("span", "", "tag is-light")
+        );
+        this.handleTag(tagEl, item);
+        container.appendChild(tagEl);
       }
+    }
+
+    personLabel(person) {
+      console.log("project_detail.js ProjectContentRenderer.personLabel", { person });
+      const parts = [];
+      if (person.name) parts.push(person.name);
+      if (person.organization) parts.push(person.organization);
+      if (!parts.length && person.email) parts.push(person.email);
+      return parts.join(", ");
+    }
+
+    handlePerson(personEl, person) {
+      console.log("project_detail.js ProjectContentRenderer.handlePerson", { personEl, person });
+      if (!personEl) {
+        return;
+      }
+
+      const label = this.personLabel(person);
+      const link = this.roleElement(personEl, "person-link");
+      const text = this.roleElement(personEl, "person-text");
+
+      if (person.email && link) {
+        link.hidden = false;
+        link.href = `mailto:${person.email}`;
+        link.textContent = label;
+        if (text) {
+          text.hidden = true;
+          text.textContent = "";
+        }
+        return;
+      }
+
+      if (link) {
+        link.hidden = true;
+        link.removeAttribute("href");
+        link.textContent = "";
+      }
+
+      if (text) {
+        text.hidden = false;
+        text.textContent = label;
+        return;
+      }
+
+      this.clearChildren(personEl);
+      if (person.email) {
+        const fallbackLink = document.createElement("a");
+        fallbackLink.href = `mailto:${person.email}`;
+        fallbackLink.textContent = label;
+        personEl.appendChild(fallbackLink);
+        return;
+      }
+      personEl.textContent = label;
     }
 
     renderPeopleList(ul, people) {
@@ -285,31 +445,31 @@
       this.clearChildren(ul);
 
       if (!Array.isArray(people) || people.length === 0) {
-        const li = document.createElement("li");
-        li.className = "has-text-grey";
-        li.textContent = "—";
-        ul.appendChild(li);
+        const emptyEl = (
+          this.cloneTemplateElement(this.dom.personEmptyTemplate)
+          || this.buildFallbackTextElement("li", "—", "has-text-grey")
+        );
+        ul.appendChild(emptyEl);
         return;
       }
 
       for (const person of people) {
-        const li = document.createElement("li");
-        const parts = [];
-        if (person.name) parts.push(person.name);
-        if (person.organization) parts.push(person.organization);
-        if (!parts.length && person.email) parts.push(person.email);
-
-        if (person.email) {
-          const a = document.createElement("a");
-          a.href = `mailto:${person.email}`;
-          a.textContent = parts.join(", ");
-          li.appendChild(a);
-        } else {
-          li.textContent = parts.join(", ");
-        }
-
-        ul.appendChild(li);
+        const personEl = (
+          this.cloneTemplateElement(this.dom.personTemplate)
+          || this.buildFallbackTextElement("li", "")
+        );
+        this.handlePerson(personEl, person);
+        ul.appendChild(personEl);
       }
+    }
+
+    handleProjectUrlLink(linkEl, url) {
+      console.log("project_detail.js ProjectContentRenderer.handleProjectUrlLink", { linkEl, url });
+      const link = this.roleElement(linkEl, "project-url-link") || linkEl;
+      if (!link) {
+        return;
+      }
+      link.href = url;
     }
 
     renderProjectUrl(container, url) {
@@ -318,18 +478,20 @@
       this.clearChildren(container);
 
       if (!url) {
-        container.classList.add("has-text-grey");
-        container.textContent = "—";
+        const emptyEl = (
+          this.cloneTemplateElement(this.dom.projectUrlEmptyTemplate)
+          || this.buildFallbackTextElement("span", "—", "has-text-grey")
+        );
+        container.appendChild(emptyEl);
         return;
       }
 
-      container.classList.remove("has-text-grey");
-      const link = document.createElement("a");
-      link.href = url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = "Open project link";
-      container.appendChild(link);
+      const linkEl = (
+        this.cloneTemplateElement(this.dom.projectUrlLinkTemplate)
+        || this.buildFallbackTextElement("a", "Open project link")
+      );
+      this.handleProjectUrlLink(linkEl, url);
+      container.appendChild(linkEl);
     }
 
     renderFeaturedImage(pictures, projectTitle) {
@@ -359,6 +521,58 @@
       this.dom.featuredImg.alt = featuredPicture.name || projectTitle || "Project photo";
     }
 
+    buildFallbackGalleryCard() {
+      console.log("project_detail.js ProjectContentRenderer.buildFallbackGalleryCard");
+      const col = document.createElement("div");
+      col.className = "column is-6";
+
+      const card = document.createElement("div");
+      card.className = "card gallery-card";
+
+      const cardImage = document.createElement("div");
+      cardImage.className = "card-image";
+
+      const figure = document.createElement("figure");
+      figure.className = "image is-4by3";
+
+      const image = document.createElement("img");
+      image.setAttribute("data-role", "gallery-image");
+      image.alt = "";
+
+      const cardContent = document.createElement("div");
+      cardContent.className = "card-content";
+
+      const caption = document.createElement("p");
+      caption.className = "is-size-7 has-text-grey";
+      caption.setAttribute("data-role", "gallery-caption");
+
+      figure.appendChild(image);
+      cardImage.appendChild(figure);
+      cardContent.appendChild(caption);
+      card.appendChild(cardImage);
+      card.appendChild(cardContent);
+      col.appendChild(card);
+
+      return col;
+    }
+
+    handleGalleryCard(cardEl, picture, projectTitle) {
+      console.log(
+        "project_detail.js ProjectContentRenderer.handleGalleryCard",
+        { cardEl, picture, projectTitle },
+      );
+      const image = this.roleElement(cardEl, "gallery-image");
+      if (image) {
+        image.src = picture.picture_path;
+        image.alt = picture.name || projectTitle || "Project photo";
+      }
+
+      const caption = this.roleElement(cardEl, "gallery-caption");
+      if (caption) {
+        caption.textContent = picture.name || "";
+      }
+    }
+
     renderGallery(pictures, projectTitle) {
       console.log(
         "project_detail.js ProjectContentRenderer.renderGallery",
@@ -386,40 +600,47 @@
       galleryWrap.hidden = false;
 
       for (const picture of galleryPictures) {
-        const col = document.createElement("div");
-        col.className = "column is-6";
-
-        const card = document.createElement("div");
-        card.className = "card gallery-card";
-
-        const cardImage = document.createElement("div");
-        cardImage.className = "card-image";
-
-        const figure = document.createElement("figure");
-        figure.className = "image is-4by3";
-
-        const image = document.createElement("img");
-        image.src = picture.picture_path;
-        image.alt = picture.name || projectTitle || "Project photo";
-
-        figure.appendChild(image);
-        cardImage.appendChild(figure);
-
-        const cardContent = document.createElement("div");
-        cardContent.className = "card-content";
-
-        const caption = document.createElement("p");
-        caption.className = "is-size-7 has-text-grey";
-        caption.textContent = picture.name || "";
-
-        cardContent.appendChild(caption);
-
-        card.appendChild(cardImage);
-        card.appendChild(cardContent);
-        col.appendChild(card);
-
-        galleryGrid.appendChild(col);
+        const cardEl = (
+          this.cloneTemplateElement(this.dom.galleryCardTemplate)
+          || this.buildFallbackGalleryCard()
+        );
+        this.handleGalleryCard(cardEl, picture, projectTitle);
+        galleryGrid.appendChild(cardEl);
       }
+    }
+
+    buildFallbackPrevNextLink() {
+      console.log("project_detail.js ProjectContentRenderer.buildFallbackPrevNextLink");
+      const link = document.createElement("a");
+      link.className = "button is-link is-light";
+      link.setAttribute("data-role", "prev-next-link");
+      return link;
+    }
+
+    handlePrevNextLink(linkEl, project, direction) {
+      console.log(
+        "project_detail.js ProjectContentRenderer.handlePrevNextLink",
+        { linkEl, project, direction },
+      );
+      const link = this.roleElement(linkEl, "prev-next-link") || linkEl;
+      if (!link) {
+        return;
+      }
+
+      const label = this.displayProjectTitle(project);
+      link.href = project.project_detail_url;
+
+      const labelEl = this.roleElement(linkEl, "prev-next-label");
+      if (labelEl) {
+        labelEl.textContent = label;
+        return;
+      }
+
+      if (direction === "previous") {
+        link.textContent = `← ${label}`;
+        return;
+      }
+      link.textContent = `${label} →`;
     }
 
     renderPrevNext(previousProject, nextProject) {
@@ -441,19 +662,21 @@
       prevNext.hidden = false;
 
       if (previousProject?.project_detail_url) {
-        const a = document.createElement("a");
-        a.className = "button is-link is-light";
-        a.href = previousProject.project_detail_url;
-        a.textContent = `← ${this.displayProjectTitle(previousProject)}`;
-        prevSlot.appendChild(a);
+        const previousLink = (
+          this.cloneTemplateElement(this.dom.previousProjectLinkTemplate)
+          || this.buildFallbackPrevNextLink()
+        );
+        this.handlePrevNextLink(previousLink, previousProject, "previous");
+        prevSlot.appendChild(previousLink);
       }
 
       if (nextProject?.project_detail_url) {
-        const a = document.createElement("a");
-        a.className = "button is-link is-light";
-        a.href = nextProject.project_detail_url;
-        a.textContent = `${this.displayProjectTitle(nextProject)} →`;
-        nextSlot.appendChild(a);
+        const nextLink = (
+          this.cloneTemplateElement(this.dom.nextProjectLinkTemplate)
+          || this.buildFallbackPrevNextLink()
+        );
+        this.handlePrevNextLink(nextLink, nextProject, "next");
+        nextSlot.appendChild(nextLink);
       }
     }
 
@@ -466,11 +689,11 @@
       this.setText(this.dom.neighborhood, project.neighborhood);
       this.setText(this.dom.startDate, this.formatDate(project.start_date));
       this.setText(this.dom.endDate, this.formatDate(project.end_date));
-      this.setText(this.dom.projectDescriptionSummary, this.firstParagraph(project.project_description));
+      this.handleProjectDescription(project);
 
       this.renderFeaturedImage(project.pictures, title);
-      this.renderParagraphs(this.dom.projectDescription, this.splitParagraphs(project.project_description));
-      this.renderBullets(this.dom.projectImpact, this.splitBullets(project.project_impact));
+      this.handleTheProject(project);
+      this.handleImpact(project);
       this.renderGallery(project.pictures, title);
 
       this.renderPeopleList(this.dom.projectLead, this.projectLeadPeople(project));
