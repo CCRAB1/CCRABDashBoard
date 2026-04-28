@@ -35,6 +35,12 @@
       this.productsBlock = document.getElementById("products-block");
       this.productsCallout = document.getElementById("products-callout");
       this.productCardTemplate = document.getElementById("product-card-template");
+      this.productLinkTemplate = document.getElementById("product-link-template");
+      this.productLinksEmptyTemplate = document.getElementById("product-links-empty-template");
+      this.productsEmptyTemplate = document.getElementById("products-empty-template");
+      this.productsTemplateMissingTemplate = document.getElementById(
+        "products-template-missing-template"
+      );
     }
 
     get projectCode() {

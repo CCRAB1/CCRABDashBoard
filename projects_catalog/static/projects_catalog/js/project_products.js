@@ -88,48 +88,114 @@
       };
     }
 
-    bind(card, cardModel) {
+    cloneTemplateElement(template) {
+      if (!(template instanceof HTMLTemplateElement)) {
+        return null;
+      }
+      return template.content.firstElementChild?.cloneNode(true) || null;
+    }
+
+    buildFallbackProductLink(linkModel) {
+      const li = document.createElement("li");
+      const anchor = document.createElement("a");
+      anchor.setAttribute("data-role", "product-link");
+      anchor.href = linkModel.href;
+      anchor.textContent = linkModel.label;
+      li.appendChild(anchor);
+      return li;
+    }
+
+    buildFallbackEmptyLinks() {
+      const li = document.createElement("li");
+      li.className = "is-size-7 has-text-grey";
+      li.textContent = "No links available.";
+      return li;
+    }
+
+    clearChildren(el) {
+      if (!el) return;
+      while (el.firstChild) {
+        el.removeChild(el.firstChild);
+      }
+    }
+
+    handleProductCategory(categoryEl, cardModel) {
+      if (!categoryEl) {
+        return;
+      }
+      categoryEl.textContent = cardModel.category;
+    }
+
+    handleProductTitle(titleEl, cardModel) {
+      if (!titleEl) {
+        return;
+      }
+      titleEl.textContent = cardModel.title;
+    }
+
+    handleProductIcon(iconEl, cardModel) {
+      if (!iconEl) {
+        return;
+      }
+
+      iconEl.dataset.kind = cardModel.iconKind;
+      iconEl.innerHTML = cardModel.iconSvg;
+    }
+
+    handleProductLink(linkEl, linkModel) {
+      const anchor = linkEl.querySelector("[data-role='product-link']");
+      if (!anchor) {
+        return;
+      }
+
+      anchor.href = linkModel.href;
+      anchor.textContent = linkModel.label;
+      if (linkModel.target) {
+        anchor.target = linkModel.target;
+      }
+      if (linkModel.rel) {
+        anchor.rel = linkModel.rel;
+      }
+    }
+
+    handleProductLinks(linksEl, cardModel, templates) {
+      const safeTemplates = templates || {};
+      if (!linksEl) {
+        return;
+      }
+
+      this.clearChildren(linksEl);
+
+      if (Array.isArray(cardModel.links) && cardModel.links.length > 0) {
+        for (const linkModel of cardModel.links) {
+          const linkEl = (
+            this.cloneTemplateElement(safeTemplates.productLinkTemplate)
+            || this.buildFallbackProductLink(linkModel)
+          );
+          this.handleProductLink(linkEl, linkModel);
+          linksEl.appendChild(linkEl);
+        }
+        return;
+      }
+
+      const emptyLinksEl = (
+        this.cloneTemplateElement(safeTemplates.productLinksEmptyTemplate)
+        || this.buildFallbackEmptyLinks()
+      );
+      linksEl.appendChild(emptyLinksEl);
+    }
+
+    bind(card, cardModel, templates) {
+      const safeTemplates = templates || {};
       const categoryEl = card.querySelector("[data-role='product-category']");
       const titleEl = card.querySelector("[data-role='product-title']");
       const linksEl = card.querySelector("[data-role='product-links']");
       const iconEl = card.querySelector("[data-role='product-icon']");
 
-      if (categoryEl) categoryEl.textContent = cardModel.category;
-      if (titleEl) titleEl.textContent = cardModel.title;
-
-      if (iconEl) {
-        iconEl.dataset.kind = cardModel.iconKind;
-        iconEl.innerHTML = cardModel.iconSvg;
-      }
-
-      if (!linksEl) return;
-      while (linksEl.firstChild) {
-        linksEl.removeChild(linksEl.firstChild);
-      }
-
-      if (Array.isArray(cardModel.links) && cardModel.links.length > 0) {
-        for (const linkModel of cardModel.links) {
-          const li = document.createElement("li");
-          const anchor = document.createElement("a");
-          //anchor.className = "is-size-7";
-          anchor.href = linkModel.href;
-          anchor.textContent = linkModel.label;
-          if (linkModel.target) {
-            anchor.target = linkModel.target;
-          }
-          if (linkModel.rel) {
-            anchor.rel = linkModel.rel;
-          }
-          li.appendChild(anchor);
-          linksEl.appendChild(li);
-        }
-        return;
-      }
-
-      const li = document.createElement("li");
-      li.className = "is-size-7 has-text-grey";
-      li.textContent = "No links available.";
-      linksEl.appendChild(li);
+      this.handleProductCategory(categoryEl, cardModel);
+      this.handleProductTitle(titleEl, cardModel);
+      this.handleProductIcon(iconEl, cardModel);
+      this.handleProductLinks(linksEl, cardModel, safeTemplates);
     }
   }
 
@@ -144,23 +210,59 @@
       while (el.firstChild) el.removeChild(el.firstChild);
     }
 
+    cloneTemplateElement(template) {
+      if (!(template instanceof HTMLTemplateElement)) {
+        return null;
+      }
+      return template.content.firstElementChild?.cloneNode(true) || null;
+    }
+
+    buildFallbackMessage(message) {
+      const col = document.createElement("div");
+      col.className = "column is-12";
+
+      const p = document.createElement("p");
+      p.className = "has-text-grey";
+      p.textContent = message;
+
+      col.appendChild(p);
+      return col;
+    }
+
+    appendTemplateOrFallback(container, template, fallbackMessage) {
+      const el = (
+        this.cloneTemplateElement(template)
+        || this.buildFallbackMessage(fallbackMessage)
+      );
+      container.appendChild(el);
+    }
+
+    getProductCardTemplates() {
+      return {
+        productLinkTemplate: this.dom.productLinkTemplate,
+        productLinksEmptyTemplate: this.dom.productLinksEmptyTemplate,
+      };
+    }
+
     renderProducts(productsPayload) {
-      const { productsBlock, productsCallout, productCardTemplate } = this.dom;
+      const {
+        productsBlock,
+        productsCallout,
+        productCardTemplate,
+        productsEmptyTemplate,
+        productsTemplateMissingTemplate,
+      } = this.dom;
       if (!productsBlock || !productsCallout) return;
 
       this.clearChildren(productsBlock);
 
       const categories = productsPayload?.categories || {};
       if (!(productCardTemplate instanceof HTMLTemplateElement)) {
-        const col = document.createElement("div");
-        col.className = "column is-12";
-
-        const p = document.createElement("p");
-        p.className = "has-text-grey";
-        p.textContent = "Product card template is missing.";
-
-        col.appendChild(p);
-        productsBlock.appendChild(col);
+        this.appendTemplateOrFallback(
+          productsBlock,
+          productsTemplateMissingTemplate,
+          "Product card template is missing."
+        );
         return;
       }
 
@@ -177,24 +279,21 @@
       }
 
       if (categoryEntries.length === 0) {
-        const col = document.createElement("div");
-        col.className = "column is-12";
-
-        const p = document.createElement("p");
-        p.className = "has-text-grey";
-        p.textContent = "No products listed.";
-
-        col.appendChild(p);
-        productsBlock.appendChild(col);
+        this.appendTemplateOrFallback(
+          productsBlock,
+          productsEmptyTemplate,
+          "No products listed."
+        );
         return;
       }
 
+      const productCardTemplates = this.getProductCardTemplates();
       for (const entry of categoryEntries) {
-        const card = productCardTemplate.content.firstElementChild?.cloneNode(true);
+        const card = this.cloneTemplateElement(productCardTemplate);
         if (!card) continue;
 
         const cardModel = this.productCardTemplateModel.fromCategory(entry.categoryName, entry.items);
-        this.productCardTemplateModel.bind(card, cardModel);
+        this.productCardTemplateModel.bind(card, cardModel, productCardTemplates);
         productsBlock.appendChild(card);
       }
     }
