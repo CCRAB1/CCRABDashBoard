@@ -1,5 +1,6 @@
-from django.db import models
 from django.contrib.gis.db import models as gis_models  # remove if not using GeoDjango
+from django.db import models
+
 
 # Auto-generated Django models from XeniaTables.py
 def platform_picture_upload_to(instance, filename):
@@ -160,6 +161,59 @@ class Platform_images(models.Model):
     def __str__(self):
         return self.name
 
+class DataSource(models.Model):
+    row_id = models.AutoField(primary_key=True)
+    row_entry_date = models.DateTimeField(null=True, blank=True)
+    row_update_date = models.DateTimeField(null=True, blank=True)
+    key = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    name = models.CharField(max_length=200, null=True, blank=True)
+    description = models.CharField(max_length=1000, null=True, blank=True)
+    plugin_id = models.CharField(max_length=100, null=True, blank=True)
+    plugin_version = models.CharField(max_length=50, null=True, blank=True)
+    active = models.IntegerField(null=True, blank=True)
+    settings = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'data_source'
+        managed = False
+
+    def __str__(self):
+        return self.name or self.key or f"Data Source {self.pk}"
+
+class PlatformSource(models.Model):
+    row_id = models.AutoField(primary_key=True)
+    row_entry_date = models.DateTimeField(null=True, blank=True)
+    row_update_date = models.DateTimeField(null=True, blank=True)
+    platform_id = models.ForeignKey(
+        'Platform',
+        on_delete=models.DO_NOTHING,
+        db_column='platform_id',
+        null=True,
+        blank=True,
+    )
+    data_source_id = models.ForeignKey(
+        'DataSource',
+        on_delete=models.DO_NOTHING,
+        db_column='data_source_id',
+        null=True,
+        blank=True,
+    )
+    external_identifier = models.CharField(max_length=200, null=True, blank=True)
+    active = models.IntegerField(null=True, blank=True)
+    begin_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
+    settings = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'platform_source'
+        managed = False
+        unique_together = (
+            ('platform_id', 'data_source_id', 'external_identifier'),
+        )
+
+    def __str__(self):
+        return f"Platform Source {getattr(self, 'external_identifier', self.pk)}"
+
 class Uom_type(models.Model):
     row_id = models.AutoField(primary_key=True)
     standard_name = models.CharField(max_length=50, null=True, blank=True)
@@ -278,6 +332,42 @@ class Multi_obs(models.Model):
 
     def __str__(self):
         return f"multi_obs {getattr(self, 'row_id', self.pk)}"
+
+class SourceObservationMap(models.Model):
+    row_id = models.AutoField(primary_key=True)
+    row_entry_date = models.DateTimeField(null=True, blank=True)
+    row_update_date = models.DateTimeField(null=True, blank=True)
+    platform_source_id = models.ForeignKey(
+        'PlatformSource',
+        on_delete=models.DO_NOTHING,
+        db_column='platform_source_id',
+        null=True,
+        blank=True,
+    )
+    sensor_id = models.ForeignKey(
+        'Sensor',
+        on_delete=models.DO_NOTHING,
+        db_column='sensor_id',
+        null=True,
+        blank=True,
+    )
+    source_obs = models.CharField(max_length=100, null=True, blank=True)
+    source_uom = models.CharField(max_length=50, null=True, blank=True)
+    source_identifier = models.CharField(max_length=200, null=True, blank=True)
+    active = models.IntegerField(null=True, blank=True)
+    begin_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
+    settings = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'source_observation_map'
+        managed = False
+        unique_together = (
+            ('platform_source_id', 'source_obs', 'source_identifier'),
+        )
+
+    def __str__(self):
+        return f"Source Observation Map {getattr(self, 'source_obs', self.pk)}"
 
 class Platform_status(models.Model):
     row_id = models.AutoField(primary_key=True)
