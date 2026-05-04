@@ -3,6 +3,15 @@ from django.contrib import admin
 from django.contrib.gis.admin import GISModelAdmin  # requires GeoDjango; remove if not using
 from . import models
 
+
+PLATFORMS_ADMIN_MODEL_GROUPS = [
+    ("Core", ["Organization", "Platform", "Sensor", "Obs_type", "Uom_type"]),
+    ("Data Sources", ["DataSource", "PlatformSource", "SourceObservationMap"]),
+    ("Status", ["Platform_status", "Sensor_status"]),
+    ("Samples", ["Sample", "Sample_answer", "Sample_attachment"]),
+    ("Lookups", ["Platform_type", "Platform_metadata", "Platform_images"]),
+]
+_default_get_app_list = admin.site.get_app_list
 # -----------------------
 # Inlines for FK relations
 # -----------------------
@@ -46,6 +55,78 @@ class SensorInline(admin.TabularInline):
     model = models.Sensor
     fk_name = "platform_id"
     fields = ('row_id', 'row_entry_date', 'row_update_date', 'type_id', 'short_name', 'm_type_id')
+    extra = 0
+    show_change_link = True
+
+class PlatformSourceInline(admin.TabularInline):
+    model = models.PlatformSource
+    fk_name = "platform_id"
+    fields = (
+        'row_id',
+        'data_source_id',
+        'external_identifier',
+        'active',
+        'begin_date',
+        'end_date',
+        'row_entry_date',
+        'row_update_date',
+    )
+    readonly_fields = ('row_id', 'row_entry_date', 'row_update_date')
+    extra = 0
+    show_change_link = True
+
+class DataSourcePlatformSourceInline(admin.TabularInline):
+    model = models.PlatformSource
+    fk_name = "data_source_id"
+    fields = (
+        'row_id',
+        'platform_id',
+        'external_identifier',
+        'active',
+        'begin_date',
+        'end_date',
+        'row_entry_date',
+        'row_update_date',
+    )
+    readonly_fields = ('row_id', 'row_entry_date', 'row_update_date')
+    extra = 0
+    show_change_link = True
+
+class SourceObservationMapInline(admin.TabularInline):
+    model = models.SourceObservationMap
+    fk_name = "platform_source_id"
+    fields = (
+        'row_id',
+        'sensor_id',
+        'source_obs',
+        'source_uom',
+        'source_identifier',
+        'active',
+        'begin_date',
+        'end_date',
+        'row_entry_date',
+        'row_update_date',
+    )
+    readonly_fields = ('row_id', 'row_entry_date', 'row_update_date')
+    extra = 0
+    show_change_link = True
+
+class SensorSourceObservationMapInline(admin.TabularInline):
+    model = models.SourceObservationMap
+    fk_name = "sensor_id"
+    fields = (
+        'row_id',
+        'platform_source_id',
+        'source_obs',
+        'source_uom',
+        'source_identifier',
+        'active',
+        'begin_date',
+        'end_date',
+        'row_entry_date',
+        'row_update_date',
+    )
+    readonly_fields = ('row_id', 'row_entry_date', 'row_update_date')
     extra = 0
     show_change_link = True
 
@@ -157,7 +238,63 @@ class PlatformAdmin(GISModelAdmin):
     list_filter = ('type_id', 'active')
     readonly_fields = ('row_entry_date', 'row_update_date')
     date_hierarchy = "row_entry_date"
-    inlines = [SensorInline, Platform_statusInline, Sensor_statusInline]
+    inlines = [SensorInline, PlatformSourceInline, Platform_statusInline, Sensor_statusInline]
+
+@admin.register(models.DataSource)
+class DataSourceAdmin(admin.ModelAdmin):
+    list_display = ('row_id', 'key', 'name', 'plugin_id', 'plugin_version', 'active', 'row_update_date')
+    search_fields = ('key', 'name', 'description', 'plugin_id')
+    list_filter = ('active', 'plugin_id')
+    readonly_fields = ('row_entry_date', 'row_update_date')
+    date_hierarchy = "row_entry_date"
+    inlines = [DataSourcePlatformSourceInline]
+
+@admin.register(models.PlatformSource)
+class PlatformSourceAdmin(admin.ModelAdmin):
+    list_display = (
+        'row_id',
+        'platform_id',
+        'data_source_id',
+        'external_identifier',
+        'active',
+        'begin_date',
+        'end_date',
+    )
+    search_fields = (
+        'platform_id__short_name',
+        'platform_id__long_name',
+        'data_source_id__key',
+        'data_source_id__name',
+        'external_identifier',
+    )
+    list_filter = ('active', 'data_source_id')
+    readonly_fields = ('row_entry_date', 'row_update_date')
+    date_hierarchy = "row_entry_date"
+    inlines = [SourceObservationMapInline]
+
+@admin.register(models.SourceObservationMap)
+class SourceObservationMapAdmin(admin.ModelAdmin):
+    list_display = (
+        'row_id',
+        'platform_source_id',
+        'sensor_id',
+        'source_obs',
+        'source_uom',
+        'source_identifier',
+        'active',
+    )
+    search_fields = (
+        'platform_source_id__platform_id__short_name',
+        'platform_source_id__data_source_id__key',
+        'platform_source_id__data_source_id__name',
+        'sensor_id__short_name',
+        'source_obs',
+        'source_uom',
+        'source_identifier',
+    )
+    list_filter = ('active', 'platform_source_id__data_source_id')
+    readonly_fields = ('row_entry_date', 'row_update_date')
+    date_hierarchy = "row_entry_date"
 
 @admin.register(models.Uom_type)
 class Uom_typeAdmin(admin.ModelAdmin):
@@ -190,7 +327,7 @@ class SensorAdmin(admin.ModelAdmin):
     list_filter = ('platform_id', 'type_id', 'm_type_id', 'active')
     readonly_fields = ('row_entry_date', 'row_update_date')
     date_hierarchy = "row_entry_date"
-    inlines = [Sensor_statusInline2]
+    inlines = [Sensor_statusInline2, SensorSourceObservationMapInline]
     #inlines = [Multi_obsInline2, Sensor_statusInline2]
 
 '''
@@ -255,3 +392,49 @@ class Platform_imagesAdmin(admin.ModelAdmin):
     list_display = ('name','description','filepath')
     search_fields = ['name']
 
+
+def get_app_list(request, app_label=None):
+    app_list = _default_get_app_list(request, app_label)
+
+    for app in app_list:
+        if app["app_label"] != "platforms_app":
+            continue
+
+        remaining_models = list(app["models"])
+        model_groups = []
+
+        for group_name, object_names in PLATFORMS_ADMIN_MODEL_GROUPS:
+            group_models = []
+
+            for object_name in object_names:
+                matched_model = None
+
+                for model in remaining_models:
+                    if model["object_name"] == object_name:
+                        matched_model = model
+                        break
+
+                if matched_model:
+                    group_models.append(matched_model)
+                    remaining_models.remove(matched_model)
+
+            if group_models:
+                model_groups.append({
+                    "name": group_name,
+                    "models": group_models,
+                })
+
+        if remaining_models:
+            model_groups.append({
+                "name": "Other",
+                "models": remaining_models,
+            })
+
+        app["model_groups"] = model_groups
+
+    return app_list
+
+
+admin.site.get_app_list = get_app_list
+
+admin.site.get_app_list = get_app_list
