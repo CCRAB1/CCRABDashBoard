@@ -1,6 +1,9 @@
-# myapp/admin.py
+from django import forms
 from django.contrib import admin
 from django.contrib.gis.admin import GISModelAdmin  # requires GeoDjango; remove if not using
+from django.http import JsonResponse
+from django.urls import path, reverse
+
 from . import models
 
 
@@ -12,6 +15,118 @@ PLATFORMS_ADMIN_MODEL_GROUPS = [
     ("Lookups", ["Platform_type", "Platform_metadata", "Platform_images"]),
 ]
 _default_get_app_list = admin.site.get_app_list
+
+
+def platform_source_platform_label(platform_source):
+    platform = platform_source.platform_id
+    if platform is None:
+        return f"Platform ID unavailable ({platform_source.pk})"
+
+    platform_name = platform.short_name or platform.platform_handle or platform.long_name
+    if platform_name:
+        return f"{platform.pk} - {platform_name}"
+
+    return str(platform.pk)
+
+
+def selected_platform_id_for_source(platform_source_id):
+    if not platform_source_id:
+        return None
+
+    try:
+        platform_source_pk = int(platform_source_id)
+    except (TypeError, ValueError):
+        return None
+
+    return (
+        models.PlatformSource.objects.filter(pk=platform_source_pk)
+        .values_list("platform_id", flat=True)
+        .first()
+    )
+
+
+def sensors_for_platform_source(platform_source_id):
+    platform_id = selected_platform_id_for_source(platform_source_id)
+    if not platform_id:
+        return models.Sensor.objects.none()
+
+    return models.Sensor.objects.filter(platform_id=platform_id).order_by(
+        "short_name",
+        "row_id",
+    )
+
+
+def remove_add_related_option(form_field):
+    if form_field is None:
+        return
+
+    if hasattr(form_field.widget, "can_add_related"):
+        form_field.widget.can_add_related = False
+
+
+def set_widget_attr(form_field, name, value):
+    form_field.widget.attrs[name] = value
+
+    if hasattr(form_field.widget, "widget"):
+        form_field.widget.widget.attrs[name] = value
+
+
+class SourceObservationMapAdminForm(forms.ModelForm):
+    class Meta:
+        model = models.SourceObservationMap
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.configure_platform_source_field()
+        self.configure_sensor_field()
+
+    def configure_platform_source_field(self):
+        platform_source_field = self.fields.get("platform_source_id")
+        if not platform_source_field:
+            return
+
+        platform_source_field.label = "Platform ID"
+        platform_source_field.queryset = platform_source_field.queryset.select_related(
+            "platform_id"
+        )
+        platform_source_field.label_from_instance = platform_source_platform_label
+        set_widget_attr(
+            platform_source_field,
+            "data-sensor-options-url",
+            reverse("admin:platforms_app_sourceobservationmap_sensor_options"),
+        )
+
+    def configure_sensor_field(self):
+        sensor_field = self.fields.get("sensor_id")
+        if not sensor_field:
+            return
+
+        sensor_field.queryset = sensors_for_platform_source(
+            self.selected_platform_source_id()
+        )
+        remove_add_related_option(sensor_field)
+
+    def selected_platform_source_id(self):
+        field_name = self.add_prefix("platform_source_id")
+        if self.data:
+            submitted_value = self.data.get(field_name)
+            if submitted_value:
+                return submitted_value
+
+        initial_value = self.initial.get("platform_source_id")
+        if initial_value:
+            return getattr(initial_value, "pk", initial_value)
+
+        if self.instance and self.instance.pk:
+            return self.instance.platform_source_id_id
+
+        return None
+
+    class Media:
+        js = ("platforms_app/js/source_observation_map_admin.js",)
+
+
 # -----------------------
 # Inlines for FK relations
 # -----------------------
@@ -110,6 +225,21 @@ class SourceObservationMapInline(admin.TabularInline):
     readonly_fields = ('row_id', 'row_entry_date', 'row_update_date')
     extra = 0
     show_change_link = True
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "sensor_id":
+            platform_source_id = request.resolver_match.kwargs.get("object_id")
+            kwargs["queryset"] = sensors_for_platform_source(platform_source_id)
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        form_field = super().formfield_for_dbfield(db_field, request, **kwargs)
+
+        if db_field.name == "sensor_id":
+            remove_add_related_option(form_field)
+
+        return form_field
 
 class SensorSourceObservationMapInline(admin.TabularInline):
     model = models.SourceObservationMap
@@ -274,9 +404,11 @@ class PlatformSourceAdmin(admin.ModelAdmin):
 
 @admin.register(models.SourceObservationMap)
 class SourceObservationMapAdmin(admin.ModelAdmin):
+    form = SourceObservationMapAdminForm
+    list_select_related = ('platform_source_id__platform_id', 'sensor_id')
     list_display = (
         'row_id',
-        'platform_source_id',
+        'platform_id',
         'sensor_id',
         'source_obs',
         'source_uom',
@@ -295,6 +427,57 @@ class SourceObservationMapAdmin(admin.ModelAdmin):
     list_filter = ('active', 'platform_source_id__data_source_id')
     readonly_fields = ('row_entry_date', 'row_update_date')
     date_hierarchy = "row_entry_date"
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        form_field = super().formfield_for_dbfield(db_field, request, **kwargs)
+
+        if db_field.name == "sensor_id":
+            remove_add_related_option(form_field)
+
+        return form_field
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "sensor-options/",
+                self.admin_site.admin_view(self.sensor_options),
+                name="platforms_app_sourceobservationmap_sensor_options",
+            ),
+        ]
+        return custom_urls + urls
+
+    @admin.display(
+        description="Platform ID",
+        ordering="platform_source_id__platform_id__short_name",
+    )
+    def platform_id(self, obj):
+        platform_source = obj.platform_source_id
+        if platform_source is None:
+            return None
+
+        platform = platform_source.platform_id
+        if platform is None:
+            return None
+
+        return platform.short_name or platform.platform_handle or platform.pk
+
+    def sensor_options(self, request):
+        sensors = []
+        sensor_queryset = sensors_for_platform_source(
+            request.GET.get("platform_source_id")
+        )
+
+        for sensor in sensor_queryset:
+            sensors.append(
+                {
+                    "value": sensor.pk,
+                    "label": str(sensor),
+                }
+            )
+
+        return JsonResponse({"sensors": sensors})
+
 
 @admin.register(models.Uom_type)
 class Uom_typeAdmin(admin.ModelAdmin):
