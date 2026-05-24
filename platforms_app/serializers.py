@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
-from .models import Platform, Sample, Sensor, M_type, M_scalar_type, Obs_type, Uom_type, Platform_type, Platform_images
+from .models import (Platform, Sample, Sensor, M_type, M_scalar_type, Obs_type, Uom_type, Platform_type, Platform_images,
+    SourceObservationMap, PlatformSource)
 
 
 
@@ -82,3 +83,60 @@ class SampleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sample
         fields = ("row_id", "platform", "timestamp", "value", "obs_type")
+
+
+class SourceObservationMapConfigurationSerializer(serializers.ModelSerializer):
+    target_obs = serializers.SerializerMethodField()
+    target_uom = serializers.SerializerMethodField()
+    sensor_id = serializers.SerializerMethodField()
+    m_type_id = serializers.SerializerMethodField()
+    s_order = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SourceObservationMap
+        fields = (
+            "source_obs",
+            "source_uom",
+            "target_obs",
+            "target_uom",
+            "sensor_id",
+            "m_type_id",
+            "s_order",
+        )
+
+    def get_sensor_id(self, obj):
+        return obj.sensor_id.row_id
+
+    def get_m_type_id(self, obj):
+        return obj.sensor_id.m_type_id.row_id
+
+    def get_s_order(self, obj):
+        return obj.sensor_id.s_order
+
+    def get_target_obs(self, obj):
+        scalar_type = obj.sensor_id.m_type_id.m_scalar_type_id
+        return scalar_type.obs_type_id.standard_name
+
+    def get_target_uom(self, obj):
+        scalar_type = obj.sensor_id.m_type_id.m_scalar_type_id
+        return scalar_type.uom_type_id.standard_name
+
+
+class PlatformSourceConfigurationSerializer(serializers.ModelSerializer):
+    platform_handle = serializers.CharField(source="platform_id.platform_handle")
+    platform_short_name = serializers.CharField(source="platform_id.short_name")
+    observations = SourceObservationMapConfigurationSerializer(
+        source="observation_maps",
+        many=True,
+        read_only=True,
+    )
+
+    class Meta:
+        model = PlatformSource
+        fields = (
+            "platform_handle",
+            "platform_short_name",
+            "external_identifier",
+            "settings",
+            "observations",
+        )

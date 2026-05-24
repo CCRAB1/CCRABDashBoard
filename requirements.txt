@@ -7,7 +7,7 @@ djangorestframework-gis
 psycopg2-binary
 gunicorn==20.1.0
 python-dateutil
-
+requests>=2.34.2
 
 
 

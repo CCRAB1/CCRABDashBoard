@@ -1,12 +1,40 @@
 from django.db.models import F, Prefetch, Q
-from django.http import Http404, JsonResponse
+from django.http import Http404, JsonResponse, request
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from CCRABDashboard.api_permissions import HasPrivateApiAccess
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+import json
+import logging
+from .models import Platform, Sensor, SourceObservationMap, PlatformSource
+from .serializers import PlatformSerializer, PlatformSourceConfigurationSerializer
 
-from .models import Platform, Sensor
-from .serializers import PlatformSerializer
+logger = logging.getLogger(__name__)
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        # The header can contain a comma-separated list of IPs; the first is the client
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        # Fallback to direct remote address
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+def request_log(request, api_id, level, message, **kwargs):
+    client_ip = get_client_ip(request=request)
+    log_message = f"Client IP: {client_ip} {api_id} {message}"
+    if level == "DEBUG":
+        logger.debug(log_message)
+    elif level == "INFO":
+        logger.info(log_message)
+    elif level == "ERROR":
+        logger.error(log_message)
+    else:
+        logger.info(log_message)
 
 
 def _parse_bbox(bbox_str):
@@ -158,3 +186,70 @@ def PlatformCatalog(request):
 
 def PlatformMap(request):
     return render(request, "platforms_map.html")
+
+'''
+Internal system API
+'''
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, HasPrivateApiAccess])
+def platform_source_configuration(request):
+
+    request_log(request, "platform_source_configuration", "DEBUG", "")
+    data_source_key = request.query_params.get("data_source", "purple_air")
+
+    observation_qs = (
+        SourceObservationMap.objects
+        .select_related(
+            "sensor_id",
+            "sensor_id__m_type_id",
+            "sensor_id__m_type_id__m_scalar_type_id",
+            "sensor_id__m_type_id__m_scalar_type_id__obs_type_id",
+            "sensor_id__m_type_id__m_scalar_type_id__uom_type_id",
+        )
+        .filter(active=1)
+        .order_by("sensor_id__s_order", "source_obs")
+    )
+
+    platform_sources = (
+        PlatformSource.objects
+        .select_related("data_source_id", "platform_id", "platform_id__organization_id")
+        .prefetch_related(
+            Prefetch(
+                "sourceobservationmap_set",
+                queryset=observation_qs,
+                to_attr="observation_maps",
+            )
+        )
+        .filter(
+            data_source_id__key=data_source_key,
+            data_source_id__active=1,
+            active=1,
+            platform_id__active=1,
+        )
+        .order_by(
+            "platform_id__organization_id__row_id",
+            "platform_id__platform_handle",
+        )
+    )
+    platform_sources = list(platform_sources)
+    serialized_platforms = PlatformSourceConfigurationSerializer(
+        platform_sources,
+        many=True,
+    ).data
+
+    config = {"organizations": {}}
+
+    for platform_source, platform_payload in zip(platform_sources, serialized_platforms):
+        organization = platform_source.platform_id.organization_id
+        org_id = organization.row_id
+
+        if org_id not in config["organizations"]:
+            config["organizations"][org_id] = {
+                "short_name": organization.short_name,
+                "long_name": organization.long_name,
+                "platforms": [],
+            }
+
+        config["organizations"][org_id]["platforms"].append(platform_payload)
+
+    return Response(config)

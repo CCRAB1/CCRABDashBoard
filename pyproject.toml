@@ -13,6 +13,7 @@ dependencies = [
     "nodeenv==1.10.0",
     "python-dateutil>=2.9.0.post0",
     "djangorestframework-stubs>=3.16.8",
+    "requests>=2.34.2",
 ]
 
 [dependency-groups]

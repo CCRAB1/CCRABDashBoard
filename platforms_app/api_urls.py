@@ -8,4 +8,7 @@ urlpatterns = [
 
     # Legacy aliases
     path("v1/platform_info/", views.PlatformViewSet.as_view(), name="platforminfo"),
+
+    path("system/platform_configuration/", views.platform_source_configuration, name="platform_configuration")
+
 ]
