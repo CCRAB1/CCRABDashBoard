@@ -64,7 +64,7 @@ class ProjectCatalogPage(TimestampedModel):
     geom = gis_models.GeometryField(srid=4326, blank=True, null=True)
 
     class Meta:
-        db_table = "project_catalog_pages"
+        db_table = '"projects"."project_catalog_pages"'
         indexes = [
             # GIST index for geometry will be created automatically for spatial queries if you add it via migrations,
             # but explicit indexes are fine too.
@@ -109,7 +109,7 @@ class ProjectPartner(TimestampedModel):
     affiliation = models.TextField(blank=True, null=True)
 
     class Meta:
-        db_table = "project_partners"
+        db_table = '"projects"."project_partners"'
         indexes = [
             models.Index(fields=["project"], name="idx_proj_partners_project_id"),
         ]
@@ -135,7 +135,7 @@ class ProjectPicture(TimestampedModel):
     )
 
     class Meta:
-        db_table = "project_pictures"
+        db_table = '"projects"."project_pictures"'
         indexes = [
             models.Index(fields=["project"], name="idx_proj_pictures_project_id"),
         ]
@@ -149,7 +149,7 @@ class ProductCategory(models.Model):
     description = models.TextField(blank=True, null=True)
 
     class Meta:
-        db_table = "product_category"
+        db_table = '"projects"."product_category"'
 
     def __str__(self) -> str:
         return self.name
@@ -160,7 +160,7 @@ class ProductType(models.Model):
     description = models.TextField(blank=True, null=True)
 
     class Meta:
-        db_table = "product_types"
+        db_table = '"projects"."product_types"'
 
     def __str__(self) -> str:
         return self.name
@@ -193,7 +193,7 @@ class HostingLocation(TimestampedModel):
     )
 
     class Meta:
-        db_table = "hosting_locations"
+        db_table = '"projects"."hosting_locations"'
         indexes = [
             models.Index(fields=["project"], name="idx_host_locs_project_id"),
         ]
@@ -242,7 +242,7 @@ class HostingLocationProductType(models.Model):
     )
 
     class Meta:
-        db_table = "hosting_location_product_types"
+        db_table = '"projects"."hosting_location_product_types"'
         constraints = [
             models.UniqueConstraint(
                 fields=["hosting_location", "product_type"],

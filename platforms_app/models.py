@@ -21,8 +21,8 @@ class Organization(models.Model):
     email_tech = models.CharField(max_length=150, null=True, blank=True)
 
     class Meta:
-        db_table = 'organization'
-        managed = False
+        db_table = '"platforms"."organization"'
+        managed = True
 
     def __str__(self):
         return f"Organization {getattr(self, 'short_name', self.pk)}"
@@ -35,8 +35,8 @@ class Collection_type(models.Model):
     description = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
-        db_table = 'collection_type'
-        managed = False
+        db_table = '"platforms"."collection_type"'
+        managed = True
 
     def __str__(self):
         return f"collection_type {getattr(self, 'row_id', self.pk)}"
@@ -63,8 +63,8 @@ class Collection_run(models.Model):
     max_z = models.FloatField(null=True, blank=True)
 
     class Meta:
-        db_table = 'collection'
-        managed = False
+        db_table = '"platforms"."collection"'
+        managed = True
 
     def __str__(self):
         return f"collection {getattr(self, 'row_id', self.pk)}"
@@ -76,8 +76,8 @@ class Platform_type(models.Model):
     short_name = models.CharField(max_length=50, null=True, blank=True)
 
     class Meta:
-        db_table = 'platform_type'
-        managed = False
+        db_table = '"platforms"."platform_type"'
+        managed = True
 
     def __str__(self):
         return f"{getattr(self, 'type_name', self.pk)}"
@@ -95,8 +95,8 @@ class Platform_metadata(models.Model):
 
 
     class Meta:
-        db_table = 'platform_metadata'
-        managed = False
+        db_table = '"platforms"."platform_metadata"'
+        managed = True
 
     def __str__(self):
         return f"Platform Metadata {getattr(self, 'row_id', self.pk)}"
@@ -137,8 +137,8 @@ class Platform(models.Model):
     timezone = models.CharField(max_length=50, null=True, blank=True)
 
     class Meta:
-        db_table = 'platform'
-        managed = False
+        db_table = '"platforms"."platform"'
+        managed = True
 
     def __str__(self):
         return f"Platform {getattr(self, 'short_name', self.pk)}"
@@ -155,8 +155,8 @@ class Platform_images(models.Model):
     #file = models.FileField(upload_to="platform_pictures/", null=True, blank=True)
 
     class Meta:
-        db_table = 'platform_images'
-        managed = False
+        db_table = '"platforms"."platform_images"'
+        managed = True
 
     def __str__(self):
         return self.name
@@ -174,8 +174,8 @@ class DataSource(models.Model):
     settings = models.JSONField(null=True, blank=True)
 
     class Meta:
-        db_table = 'data_source'
-        managed = False
+        db_table = '"platforms"."data_source"'
+        managed = True
 
     def __str__(self):
         return self.name or self.key or f"Data Source {self.pk}"
@@ -205,8 +205,8 @@ class PlatformSource(models.Model):
     settings = models.JSONField(null=True, blank=True)
 
     class Meta:
-        db_table = 'platform_source'
-        managed = False
+        db_table = '"platforms"."platform_source"'
+        managed = True
         unique_together = (
             ('platform_id', 'data_source_id', 'external_identifier'),
         )
@@ -221,8 +221,8 @@ class Uom_type(models.Model):
     display = models.CharField(max_length=50, null=True, blank=True)
 
     class Meta:
-        db_table = 'uom_type'
-        managed = False
+        db_table = '"platforms"."uom_type"'
+        managed = True
 
     def __str__(self):
         return f"UOM {getattr(self, 'standard_name', self.pk)}"
@@ -234,8 +234,8 @@ class Obs_type(models.Model):
     standard_name = models.CharField(max_length=50, null=True, blank=True)
 
     class Meta:
-        db_table = 'obs_type'
-        managed = False
+        db_table = '"platforms"."obs_type"'
+        managed = True
 
     def __str__(self):
         return f"Observation Type {getattr(self, 'standard_name', self.pk)}"
@@ -245,8 +245,8 @@ class M_scalar_type(models.Model):
     obs_type_id = models.ForeignKey('Obs_type', on_delete=models.CASCADE, db_column='obs_type_id', null=True, blank=True)
     uom_type_id = models.ForeignKey('Uom_type', on_delete=models.CASCADE, db_column='uom_type_id', null=True, blank=True)
     class Meta:
-        db_table = 'm_scalar_type'
-        managed = False
+        db_table = '"platforms"."m_scalar_type"'
+        managed = True
 
     def __str__(self):
         return f"m_scalar_type {getattr(self, 'row_id', self.pk)}"
@@ -265,8 +265,8 @@ class M_type(models.Model):
     m_scalar_type_id_8 = models.IntegerField(null=True, blank=True)
 
     class Meta:
-        db_table = 'm_type'
-        managed = False
+        db_table = '"platforms"."m_type"'
+        managed = True
 
     def __str__(self):
         return f"m_type {getattr(self, 'row_id', self.pk)}"
@@ -289,8 +289,8 @@ class Sensor(models.Model):
     report_interval = models.IntegerField(null=True, blank=True)
 
     class Meta:
-        db_table = 'sensor'
-        managed = False
+        db_table = '"platforms"."sensor"'
+        managed = True
 
     def __str__(self):
         return f"Sensor {getattr(self, 'short_name', self.pk)}"
@@ -300,8 +300,8 @@ class Multi_obs(models.Model):
     row_entry_date = models.DateTimeField(null=True, blank=True)
     row_update_date = models.DateTimeField(null=True, blank=True)
     platform_handle = models.CharField(max_length=100, null=True, blank=True)
-    sensor_id = models.ForeignKey('Sensor', on_delete=models.CASCADE, db_column='sensor_id', null=True, blank=True)
-    m_type_id = models.ForeignKey('M_type', on_delete=models.CASCADE, db_column='m_type_id', null=True, blank=True)
+    sensor_id = models.ForeignKey('Sensor', on_delete=models.CASCADE, db_column='sensor_id')
+    m_type_id = models.ForeignKey('M_type', on_delete=models.CASCADE, db_column='m_type_id')
     m_date = models.DateTimeField(null=True, blank=True)
     m_lon = models.FloatField(null=True, blank=True)
     m_lat = models.FloatField(null=True, blank=True)
@@ -327,8 +327,20 @@ class Multi_obs(models.Model):
     the_geom = gis_models.PointField(srid=4326, null=True, blank=True)
 
     class Meta:
-        db_table = 'multi_obs'
-        managed = False
+        db_table = '"platforms"."multi_obs"'
+        managed = True
+        constraints = [
+            models.UniqueConstraint(
+                fields=['m_date', 'm_type_id', 'sensor_id'],
+                name='i_multi_obs',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=['m_date', 'platform_handle'],
+                name='i_multi_obs_date_platform',
+            ),
+        ]
 
     def __str__(self):
         return f"multi_obs {getattr(self, 'row_id', self.pk)}"
@@ -360,8 +372,8 @@ class SourceObservationMap(models.Model):
     settings = models.JSONField(null=True, blank=True)
 
     class Meta:
-        db_table = 'source_observation_map'
-        managed = False
+        db_table = '"platforms"."source_observation_map"'
+        managed = True
         unique_together = (
             ('platform_source_id', 'source_obs', 'source_identifier'),
         )
@@ -382,8 +394,8 @@ class Platform_status(models.Model):
     status = models.IntegerField(null=True, blank=True)
     platform_id = models.ForeignKey('Platform', on_delete=models.CASCADE, db_column='platform_id', null=True, blank=True)
     class Meta:
-        db_table = 'platform_status'
-        managed = False
+        db_table = '"platforms"."platform_status"'
+        managed = True
 
     def __str__(self):
         return f"platform_status {getattr(self, 'row_id', self.pk)}"
@@ -403,8 +415,8 @@ class Sensor_status(models.Model):
     status = models.IntegerField(null=True, blank=True)
 
     class Meta:
-        db_table = 'sensor_status'
-        managed = False
+        db_table = '"platforms"."sensor_status"'
+        managed = True
 
     def __str__(self):
         return f"sensor_status {getattr(self, 'row_id', self.pk)}"
@@ -415,8 +427,8 @@ class Product_type(models.Model):
     description = models.CharField(max_length=1000, null=True, blank=True)
 
     class Meta:
-        db_table = 'product_type'
-        managed = False
+        db_table = '"platforms"."product_type"'
+        managed = True
 
     def __str__(self):
         return f"product_type {getattr(self, 'row_id', self.pk)}"
@@ -430,8 +442,8 @@ class Timestamp_lkp(models.Model):
     filepath = models.CharField(max_length=200, null=True, blank=True)
 
     class Meta:
-        db_table = 'timestamp_lkp'
-        managed = False
+        db_table = '"platforms"."timestamp_lkp"'
+        managed = True
 
     def __str__(self):
         return f"timestamp_lkp {getattr(self, 'row_id', self.pk)}"
@@ -455,8 +467,8 @@ class Sample(models.Model):
     collector_id = models.IntegerField(null=True, blank=True)
 
     class Meta:
-        db_table = 'sample'
-        managed = False
+        db_table = '"platforms"."sample"'
+        managed = True
 
     def __str__(self):
         return f"Sample {getattr(self, 'name', self.pk)}"
@@ -480,8 +492,8 @@ class Sample_answer(models.Model):
     note = models.TextField(null=True, blank=True)
 
     class Meta:
-        db_table = 'sample_answer'
-        managed = False
+        db_table = '"platforms"."sample_answer"'
+        managed = True
 
     def __str__(self):
         return f"Question {getattr(self, 'question_text', self.pk)}"
@@ -502,8 +514,8 @@ class Sample_attachment(models.Model):
     uploaded_by = models.CharField(max_length=150, null=True, blank=True)
 
     class Meta:
-        db_table = 'sample_attachment'
-        managed = False
+        db_table = '"platforms"."sample_attachment"'
+        managed = True
 
     def __str__(self):
         return f"Sample Attachment {getattr(self, 'filename', self.pk)}"

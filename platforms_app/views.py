@@ -237,19 +237,22 @@ def platform_source_configuration(request):
         many=True,
     ).data
 
-    config = {"organizations": {}}
-
+    config = {"organizations": []}
+    org_ndx = {}
     for platform_source, platform_payload in zip(platform_sources, serialized_platforms):
         organization = platform_source.platform_id.organization_id
         org_id = organization.row_id
-
-        if org_id not in config["organizations"]:
-            config["organizations"][org_id] = {
+        #org_exists = [org_ndx for org_nfo in config["organizations"] if org_nfo["org_id"] == org_id]
+        if len(org_ndx) == 0 or org_id not in org_ndx:
+        #if org_id not in config["organizations"]:
+            config["organizations"].append({
+                "org_id": org_id,
                 "short_name": organization.short_name,
                 "long_name": organization.long_name,
                 "platforms": [],
-            }
-
-        config["organizations"][org_id]["platforms"].append(platform_payload)
+            })
+            org_ndx[org_id] = len(config["organizations"]) - 1
+        ndx = org_ndx[org_id]
+        config["organizations"][ndx]["platforms"].append(platform_payload)
 
     return Response(config)

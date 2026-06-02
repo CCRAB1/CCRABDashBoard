@@ -124,7 +124,20 @@ class SourceObservationMapConfigurationSerializer(serializers.ModelSerializer):
 
 class PlatformSourceConfigurationSerializer(serializers.ModelSerializer):
     platform_handle = serializers.CharField(source="platform_id.platform_handle")
-    platform_short_name = serializers.CharField(source="platform_id.short_name")
+    short_name = serializers.CharField(source="platform_id.short_name")
+    longitude = serializers.FloatField(source="platform_id.fixed_longitude")
+    latitude = serializers.FloatField(source="platform_id.fixed_latitude")
+    country_code = serializers.CharField(source="platform_id.country_code")
+    neighborhood = serializers.CharField(source="platform_id.neighborhood")
+    """
+    properties = {
+        "external_identifier": serializers.CharField(source="data_source_id.external_identifier"),
+        "platform_metadata": {
+            "country_code": serializers.CharField(source="platform_id.country_code"),
+            "neighborhood": serializers.CharField(source="platform_id.neighborhood")
+        }
+    }
+    """
     observations = SourceObservationMapConfigurationSerializer(
         source="observation_maps",
         many=True,
@@ -135,8 +148,11 @@ class PlatformSourceConfigurationSerializer(serializers.ModelSerializer):
         model = PlatformSource
         fields = (
             "platform_handle",
-            "platform_short_name",
+            "latitude",
+            "longitude",
+            "short_name",
             "external_identifier",
-            "settings",
-            "observations",
+            "country_code",
+            "neighborhood",
+            "observations"
         )
