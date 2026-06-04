@@ -31,11 +31,29 @@ This runs:
 - PostGIS (`db`)
 - Nginx reverse proxy/static/media server (`nginx`)
 
+Set the production environment values in `prod.env` first, including
+`DJANGO_ALLOWED_HOSTS`, `NGINX_SERVER_NAME`, `CERTBOT_DOMAIN`, and
+`CERTBOT_EMAIL`. If the Lets Encrypt volume is empty, issue the first
+certificate with nginx stopped:
+
 ```bash
-docker compose -f docker-compose.prod.yml up --build -d
+docker compose --env-file prod.env -f docker-compose.prod.yml --profile certbot-standalone run --rm --service-ports certbot-standalone
 ```
 
-- App entrypoint: `http://localhost` (port 80)
+After the first certificate exists, start the stack:
+
+```bash
+docker compose --env-file prod.env -f docker-compose.prod.yml up --build -d
+```
+
+- App entrypoint: `https://<your-domain>` (port 443)
+
+For webroot renewals while nginx is running:
+
+```bash
+docker compose --env-file prod.env -f docker-compose.prod.yml --profile certbot run --rm certbot
+docker compose --env-file prod.env -f docker-compose.prod.yml exec nginx nginx -s reload
+```
 
 ## Environment Notes
 

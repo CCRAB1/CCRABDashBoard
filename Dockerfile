@@ -1,8 +1,13 @@
 FROM python:3.11-slim
 
+ARG APP_UID=10001
+ARG APP_GID=10001
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    HOME=/tmp \
+    XDG_CACHE_HOME=/tmp/.cache
 
 WORKDIR /app
 
@@ -19,10 +24,17 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip \
     && pip install -r /app/requirements.txt
 
+RUN groupadd --gid "${APP_GID}" django \
+    && useradd --uid "${APP_UID}" --gid django --home-dir /app --shell /usr/sbin/nologin --no-create-home --no-log-init django
+
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
 RUN chmod +x /usr/local/bin/entrypoint
 
-COPY . /app
+COPY --chown=django:django . /app
+RUN mkdir -p /app/staticfiles /app/media \
+    && chown django:django /app/staticfiles /app/media
+
+USER 10001:10001
 
 ENTRYPOINT ["entrypoint"]
-CMD ["gunicorn", "--workers", "3", "--bind", "0.0.0.0:8000", "CCRABDashboard.wsgi:application"]
+CMD ["gunicorn", "--workers", "3", "--worker-tmp-dir", "/tmp", "--bind", "0.0.0.0:8000", "CCRABDashboard.wsgi:application"]

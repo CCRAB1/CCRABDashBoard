@@ -1,3 +1,29 @@
-.env
-prod.env
+.venv
+.idea
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.swp
+.DS_Store
+
+# Local environment and secrets
+.env.*
+!.env.sample
+docker/certs/
+*.pem
+*.key
+
+# Local databases, dumps, and runtime data
+postgres_data/
+*.dump
+*.backup
+*.sql.gz
+db.sqlite3
+*.sqlite3
+media/
+staticfiles/
+
+# Local dependency caches
+node_modules/
+vue/ccrab_frontend/node_modules/
 
