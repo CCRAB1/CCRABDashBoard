@@ -37,13 +37,13 @@ Set the production environment values in `prod.env` first, including
 certificate with nginx stopped:
 
 ```bash
-docker compose --env-file prod.env -f docker-compose.prod.yml --profile certbot-standalone run --rm --service-ports certbot-standalone
+docker compose -f docker-compose.prod.yml --profile certbot-standalone run --rm --service-ports certbot-standalone
 ```
 
 After the first certificate exists, start the stack:
 
 ```bash
-docker compose --env-file prod.env -f docker-compose.prod.yml up --build -d
+docker compose -f docker-compose.prod.yml up --build -d
 ```
 
 - App entrypoint: `https://<your-domain>` (port 443)
@@ -51,8 +51,8 @@ docker compose --env-file prod.env -f docker-compose.prod.yml up --build -d
 For webroot renewals while nginx is running:
 
 ```bash
-docker compose --env-file prod.env -f docker-compose.prod.yml --profile certbot run --rm certbot
-docker compose --env-file prod.env -f docker-compose.prod.yml exec nginx nginx -s reload
+docker compose -f docker-compose.prod.yml --profile certbot run --rm certbot
+docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 ```
 
 ## Environment Notes

@@ -1,18 +1,31 @@
 name: ccrabdashboard_production
 
+x-prod-env: &prod_env
+  env_file:
+    - prod.env
+
 services:
   db:
+    <<: *prod_env
     image: postgis/postgis:16-3.4
     restart: unless-stopped
     environment:
-      POSTGRES_DB: "${DATABASE_NAME:?Set DATABASE_NAME for the production database}"
-      POSTGRES_USER: "${DATABASE_USER:?Set DATABASE_USER for the production database}"
-      POSTGRES_PASSWORD: "${DATABASE_PASSWORD:?Set DATABASE_PASSWORD for the production database}"
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        : "$${DATABASE_NAME:?Set DATABASE_NAME in prod.env}"
+        : "$${DATABASE_USER:?Set DATABASE_USER in prod.env}"
+        : "$${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in prod.env}"
+        export POSTGRES_DB="$${POSTGRES_DB:-$${DATABASE_NAME}}"
+        export POSTGRES_USER="$${POSTGRES_USER:-$${DATABASE_USER}}"
+        export POSTGRES_PASSWORD="$${POSTGRES_PASSWORD:-$${DATABASE_PASSWORD}}"
+        exec docker-entrypoint.sh postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${DATABASE_USER}\" -d \"$${DATABASE_NAME}\""]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -21,6 +34,7 @@ services:
       - backend
 
   web:
+    <<: *prod_env
     build:
       context: .
     restart: unless-stopped
@@ -36,16 +50,21 @@ services:
     environment:
       DJANGO_IN_DOCKER: "True"
       DJANGO_DEBUG: "False"
-      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:?Set DJANGO_ALLOWED_HOSTS to your production hostnames}"
-      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?Set a strong DJANGO_SECRET_KEY for production}"
-      DATABASE_NAME: "${DATABASE_NAME:?Set DATABASE_NAME for the production database}"
-      DATABASE_USER: "${DATABASE_USER:?Set DATABASE_USER for the production database}"
-      DATABASE_PASSWORD: "${DATABASE_PASSWORD:?Set DATABASE_PASSWORD for the production database}"
       DATABASE_HOST: db
       DATABASE_PORT: "5432"
       DJANGO_WAIT_FOR_DB: "1"
       DJANGO_RUN_MIGRATIONS: "1"
       DJANGO_COLLECTSTATIC: "1"
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        : "$${DJANGO_ALLOWED_HOSTS:?Set DJANGO_ALLOWED_HOSTS in prod.env}"
+        : "$${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in prod.env}"
+        : "$${DATABASE_NAME:?Set DATABASE_NAME in prod.env}"
+        : "$${DATABASE_USER:?Set DATABASE_USER in prod.env}"
+        : "$${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in prod.env}"
+        exec gunicorn --workers "$${GUNICORN_WORKERS:-3}" --bind 0.0.0.0:8000 CCRABDashboard.wsgi:application
     volumes:
       - static_data:/app/staticfiles:rw
       - media_data:/app/media:rw
@@ -64,11 +83,9 @@ services:
       - backend
 
   nginx:
+    <<: *prod_env
     image: nginx:1.27-alpine
     restart: unless-stopped
-    environment:
-      NGINX_SERVER_NAME: "${NGINX_SERVER_NAME:?Set NGINX_SERVER_NAME to your production hostnames}"
-      CERTBOT_DOMAIN: "${CERTBOT_DOMAIN:?Set CERTBOT_DOMAIN to the primary Lets Encrypt certificate domain}"
     ports:
       - "80:80"
       - "443:443"
@@ -85,14 +102,10 @@ services:
       - backend
 
   certbot:
+    <<: *prod_env
     image: certbot/certbot
     profiles:
       - certbot
-    environment:
-      CERTBOT_EMAIL: "${CERTBOT_EMAIL:?Set CERTBOT_EMAIL for Lets Encrypt registration}"
-      CERTBOT_DOMAIN: "${CERTBOT_DOMAIN:?Set CERTBOT_DOMAIN to the primary Lets Encrypt certificate domain}"
-      CERTBOT_EXTRA_DOMAINS: "${CERTBOT_EXTRA_DOMAINS:-}"
-      CERTBOT_EXTRA_ARGS: "${CERTBOT_EXTRA_ARGS:-}"
     volumes:
       - certbot_www:/var/www/certbot
       - certbot_etc:/etc/letsencrypt
@@ -103,25 +116,23 @@ services:
     command:
       - -c
       - >
+        : "$${CERTBOT_EMAIL:?Set CERTBOT_EMAIL in prod.env}" &&
+        : "$${CERTBOT_DOMAIN:?Set CERTBOT_DOMAIN in prod.env}" &&
         certbot certonly --webroot --webroot-path=/var/www/certbot
         --email "$${CERTBOT_EMAIL}"
         --agree-tos --no-eff-email --non-interactive --keep-until-expiring
         --cert-name "$${CERTBOT_DOMAIN}"
         -d "$${CERTBOT_DOMAIN}"
-        $${CERTBOT_EXTRA_DOMAINS}
-        $${CERTBOT_EXTRA_ARGS}
+        $${CERTBOT_EXTRA_DOMAINS:-}
+        $${CERTBOT_EXTRA_ARGS:-}
     networks:
       - backend
 
   certbot-standalone:
+    <<: *prod_env
     image: certbot/certbot
     profiles:
       - certbot-standalone
-    environment:
-      CERTBOT_EMAIL: "${CERTBOT_EMAIL:?Set CERTBOT_EMAIL for Lets Encrypt registration}"
-      CERTBOT_DOMAIN: "${CERTBOT_DOMAIN:?Set CERTBOT_DOMAIN to the primary Lets Encrypt certificate domain}"
-      CERTBOT_EXTRA_DOMAINS: "${CERTBOT_EXTRA_DOMAINS:-}"
-      CERTBOT_EXTRA_ARGS: "${CERTBOT_EXTRA_ARGS:-}"
     ports:
       - "80:80"
     volumes:
@@ -130,13 +141,15 @@ services:
     command:
       - -c
       - >
+        : "$${CERTBOT_EMAIL:?Set CERTBOT_EMAIL in prod.env}" &&
+        : "$${CERTBOT_DOMAIN:?Set CERTBOT_DOMAIN in prod.env}" &&
         certbot certonly --standalone --preferred-challenges http
         --email "$${CERTBOT_EMAIL}"
         --agree-tos --no-eff-email --non-interactive --keep-until-expiring
         --cert-name "$${CERTBOT_DOMAIN}"
         -d "$${CERTBOT_DOMAIN}"
-        $${CERTBOT_EXTRA_DOMAINS}
-        $${CERTBOT_EXTRA_ARGS}
+        $${CERTBOT_EXTRA_DOMAINS:-}
+        $${CERTBOT_EXTRA_ARGS:-}
     networks:
       - backend
 
