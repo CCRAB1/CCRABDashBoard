@@ -7,6 +7,7 @@ __pycache__/
 .DS_Store
 
 # Local environment and secrets
+prod.env
 .env.*
 !.env.sample
 docker/certs/
@@ -26,4 +27,3 @@ staticfiles/
 # Local dependency caches
 node_modules/
 vue/ccrab_frontend/node_modules/
-
