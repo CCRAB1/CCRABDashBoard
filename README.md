@@ -32,9 +32,9 @@ This runs:
 - Nginx reverse proxy/static/media server (`nginx`)
 
 Set the production environment values in `prod.env` first, including
-`DJANGO_ALLOWED_HOSTS`, `NGINX_SERVER_NAME`, `CERTBOT_DOMAIN`, and
-`CERTBOT_EMAIL`. If the Lets Encrypt volume is empty, issue the first
-certificate with nginx stopped:
+`DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `NGINX_SERVER_NAME`,
+`CERTBOT_DOMAIN`, and `CERTBOT_EMAIL`. If the Lets Encrypt volume is empty,
+issue the first certificate with nginx stopped:
 
 ```bash
 docker compose -f docker-compose.prod.yml --profile certbot-standalone run --rm --service-ports certbot-standalone
@@ -59,7 +59,12 @@ docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 
 - `CCRABDashboard/settings.py` keeps Homebrew GDAL/GEOS defaults for local runs.
 - Docker sets `DJANGO_IN_DOCKER=True`, which switches GIS library detection to Linux/container paths.
-- In production, set a real `DJANGO_SECRET_KEY` and production hostnames in `DJANGO_ALLOWED_HOSTS`.
+- In production, set a real `DJANGO_SECRET_KEY`, production hostnames in
+  `DJANGO_ALLOWED_HOSTS`, and scheme-qualified origins in
+  `DJANGO_CSRF_TRUSTED_ORIGINS`.
+- For the current production host, use
+  `DJANGO_ALLOWED_HOSTS=159.203.109.18.sslip.io` and
+  `DJANGO_CSRF_TRUSTED_ORIGINS=https://159.203.109.18.sslip.io`.
 
 ## REST API Client
 

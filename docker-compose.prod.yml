@@ -50,6 +50,7 @@ services:
     environment:
       DJANGO_IN_DOCKER: "True"
       DJANGO_DEBUG: "False"
+      DJANGO_TRUST_X_FORWARDED_PROTO: "True"
       DATABASE_HOST: db
       DATABASE_PORT: "5432"
       DJANGO_WAIT_FOR_DB: "1"
@@ -60,6 +61,7 @@ services:
       - -ec
       - |
         : "$${DJANGO_ALLOWED_HOSTS:?Set DJANGO_ALLOWED_HOSTS in prod.env}"
+        : "$${DJANGO_CSRF_TRUSTED_ORIGINS:?Set DJANGO_CSRF_TRUSTED_ORIGINS in prod.env}"
         : "$${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in prod.env}"
         : "$${DATABASE_NAME:?Set DATABASE_NAME in prod.env}"
         : "$${DATABASE_USER:?Set DATABASE_USER in prod.env}"
