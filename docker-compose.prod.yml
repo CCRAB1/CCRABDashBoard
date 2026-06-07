@@ -4,6 +4,38 @@ x-prod-env: &prod_env
   env_file:
     - prod.env
 
+x-airflow-common: &airflow_common
+  <<: *prod_env
+  build:
+    context: ..
+    dockerfile: CCRABDashBoard/docker/airflow/Dockerfile
+  entrypoint: /usr/local/bin/ccrab-airflow-entrypoint
+  init: true
+  environment:
+    AIRFLOW_HOME: /opt/airflow
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "True"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
+    AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+    AIRFLOW__CORE__PLUGINS_FOLDER: /opt/airflow/plugins
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "False"
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: admin:admin
+    AIRFLOW__API__BASE_URL: http://airflow-apiserver:8080
+    AIRFLOW_VAR_BASE_WORKING_DIRECTORY: /opt/airflow/working_directory
+    AIRFLOW_VAR_CCRAB_DJANGO_PROJECT_PATH: /opt/ccrab/dashboard
+    CCRAB_DJANGO_PROJECT_PATH: /opt/ccrab/dashboard
+  volumes:
+    - airflow_logs:/opt/airflow/logs
+    - airflow_working_directory:/opt/airflow/working_directory
+    - ./docker/airflow/variables:/opt/airflow/variables:ro
+  depends_on:
+    db:
+      condition: service_healthy
+  networks:
+    - backend
+
 services:
   db:
     <<: *prod_env
@@ -104,6 +136,81 @@ services:
     networks:
       - backend
 
+  airflow-init:
+    <<: *airflow_common
+    restart: "no"
+    command:
+      - bash
+      - -ec
+      - |
+        airflow db migrate
+        if [ -f /opt/airflow/variables/production.json ]; then
+          airflow variables import -a overwrite /opt/airflow/variables/production.json
+        fi
+
+  airflow-apiserver:
+    <<: *airflow_common
+    restart: unless-stopped
+    command:
+      - airflow
+      - api-server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --proxy-headers
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8080), 5).close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  airflow-scheduler:
+    <<: *airflow_common
+    restart: unless-stopped
+    command:
+      - airflow
+      - scheduler
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-dag-processor:
+    <<: *airflow_common
+    restart: unless-stopped
+    command:
+      - airflow
+      - dag-processor
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-triggerer:
+    <<: *airflow_common
+    restart: unless-stopped
+    profiles:
+      - airflow-triggerer
+    command:
+      - airflow
+      - triggerer
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
   certbot:
     <<: *prod_env
     image: certbot/certbot
@@ -160,6 +267,8 @@ volumes:
   postgres_data:
   static_data:
   media_data:
+  airflow_logs:
+  airflow_working_directory:
   certbot_www:
   certbot_etc:
 
